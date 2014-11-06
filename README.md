@@ -3,6 +3,8 @@ A Personal Wiki For Vim Plugin
 
 This is a mirror of http://www.vim.org/scripts/script.php?script_id=2226
 
+**Note: master branch is frozen, use dev branch!**
+
 Screenshots are available on http://code.google.com/p/vimwiki/ 
 There are also zipped vimwiki files there in case you do not like vimball archives.
 
