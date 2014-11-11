@@ -599,6 +599,18 @@ il                      A single list item.
 
     Supports |cmdline-completion| for link name.
 
+*:VG*
+    Similar to |:VimwikiGoto|, but treats spaces differently. For example, if 
+    your link contains spaces, as in "Hello World", here's the usage, two 
+    equivalent commands to open the link: >
+        :VimwikiGoto Hello\ World
+        :VG Hello World
+<
+    Supports |cmdline-completion| for link name.
+
+*:VGN*
+    Similar to |:VG| but opens link in a new buffer.
+
 *:VimwikiDeleteLink*
     Delete the wiki page that you are in.
 
@@ -2586,6 +2598,11 @@ Vim plugins: http://www.vim.org/scripts/script.php?script_id=2226
 
 ==============================================================================
 16. Changelog                                              *vimwiki-changelog*
+
+t7ko/dev~
+
+    * |:VG| and |:VGN| shortcuts to |:VimwikiGoto| which don't need escaping 
+      spaces in link.
 
 ???~
 

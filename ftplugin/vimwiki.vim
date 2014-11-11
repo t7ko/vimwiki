@@ -286,6 +286,13 @@ exe 'command! -buffer -nargs=* VWS lvimgrep <args> '.
 command! -buffer -nargs=+ -complete=custom,vimwiki#base#complete_links_escaped
       \ VimwikiGoto call vimwiki#base#goto(<f-args>)
 
+command! -buffer -nargs=+ -complete=custom,vimwiki#base#complete_links
+      \ VG call vimwiki#base#goto(<q-args>)
+
+command! -buffer -nargs=+ -complete=custom,vimwiki#base#complete_links
+      \ VGN split | call vimwiki#base#goto(<q-args>)
+"}}}
+
 
 " list commands
 command! -buffer -nargs=+ VimwikiReturn call <SID>CR(<f-args>)
