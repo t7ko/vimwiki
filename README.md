@@ -1,6 +1,15 @@
 A Personal Wiki For Vim Plugin
 ==============================================================================
 
+*NOTE*
+
+This is a clone of vimwiki repo, where I add stuff useful to me but not
+mainstream enough to push it to main repo.  To check out the list of changes,
+go to https://github.com/t7ko/vimwiki/blob/dev/doc/vimwiki.txt and 
+search for `t7ko/dev` section (near the end, under `Changelog`).
+
+*END NOTE*
+
 This is a mirror of http://www.vim.org/scripts/script.php?script_id=2226
 
 **Note: master branch is frozen, use dev branch!**
