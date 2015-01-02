@@ -234,8 +234,7 @@ function! vimwiki#diary#make_note(wnum, ...) "{{{
     let idx = 0
   endif
 
-  call vimwiki#base#validate_wiki_options(idx)
-  call vimwiki#base#mkdir(VimwikiGet('path', idx).VimwikiGet('diary_rel_path', idx))
+  call vimwiki#path#mkdir(VimwikiGet('path', idx).VimwikiGet('diary_rel_path', idx))
 
   if a:0 && a:1 == 1
     let cmd = 'tabedit'
@@ -265,7 +264,6 @@ function! vimwiki#diary#goto_diary_index(wnum) "{{{
     let idx = 0
   endif
 
-  call vimwiki#base#validate_wiki_options(idx)
   call vimwiki#base#edit_file('e', s:diary_index(idx), '')
   call vimwiki#base#setup_buffer_state(idx)
 endfunction "}}}
@@ -311,8 +309,8 @@ function! vimwiki#diary#goto_prev_day() "{{{
 endfunction "}}}
 
 function! vimwiki#diary#generate_diary_section() "{{{
-  let current_file = vimwiki#u#path_norm(expand("%:p"))
-  let diary_file = vimwiki#u#path_norm(s:diary_index())
+  let current_file = vimwiki#path#path_norm(expand("%:p"))
+  let diary_file = vimwiki#path#path_norm(s:diary_index())
   if  current_file == diary_file
     call s:delete_diary_section()
     call s:insert_diary_section()

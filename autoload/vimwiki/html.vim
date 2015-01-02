@@ -76,7 +76,7 @@ endfunction "}}}
 function! s:create_default_CSS(path) " {{{
   let css_full_name = s:default_CSS_full_name(a:path)
   if glob(css_full_name) == ""
-    call vimwiki#base#mkdir(fnamemodify(css_full_name, ':p:h'))
+    call vimwiki#path#mkdir(fnamemodify(css_full_name, ':p:h'))
     let default_css = s:find_autoload_file('style.css')
     if default_css != ''
       let lines = readfile(default_css)
@@ -375,7 +375,7 @@ function! s:tag_wikiincl(value) "{{{
     let verbatim_str = matchstr(str, vimwiki#html#incl_match_arg(2))
     " resolve url
     let [idx, scheme, path, subdir, lnk, ext, url, anchor] =
-          \ vimwiki#base#resolve_scheme(url_0, 1)
+          \ vimwiki#base#resolve_scheme(url_0, 1, 1)
     " generate html output
     " TODO: migrate non-essential debugging messages into g:VimwikiLog
     if g:vimwiki_debug > 1
@@ -409,7 +409,7 @@ function! s:tag_wikilink(value) "{{{
 
   " resolve url
   let [idx, scheme, path, subdir, lnk, ext, url, anchor] =
-        \ vimwiki#base#resolve_scheme(url, 1)
+        \ vimwiki#base#resolve_scheme(url, 1, 1)
 
   " generate html output
   " TODO: migrate non-essential debugging messages into g:VimwikiLog
@@ -1105,6 +1105,32 @@ function! s:parse_line(line, state) " {{{
 
   let processed = 0
 
+  " pres "{{{
+  if !processed
+    let [processed, lines, state.pre] = s:process_tag_pre(line, state.pre)
+    " pre is just fine to be in the list -- do not close list item here.
+    " if processed && len(state.lists)
+      " call s:close_tag_list(state.lists, lines)
+    " endif
+    if !processed
+      let [processed, lines, state.math] = s:process_tag_math(line, state.math)
+    endif
+    if processed && len(state.table)
+      let state.table = s:close_tag_table(state.table, lines, state.header_ids)
+    endif
+    if processed && state.deflist
+      let state.deflist = s:close_tag_def_list(state.deflist, lines)
+    endif
+    if processed && state.quote
+      let state.quote = s:close_tag_quote(state.quote, lines)
+    endif
+    if processed && state.para
+      let state.para = s:close_tag_para(state.para, lines)
+    endif
+    call extend(res_lines, lines)
+  endif
+  "}}}
+
   if !processed
     if line =~ g:vimwiki_rxComment
       let processed = 1
@@ -1135,32 +1161,6 @@ function! s:parse_line(line, state) " {{{
       let param = matchstr(line, '^\s*%template\s\zs.*')
       let state.placeholder = ['template', param]
     endif
-  endif
-  "}}}
-
-  " pres "{{{
-  if !processed
-    let [processed, lines, state.pre] = s:process_tag_pre(line, state.pre)
-    " pre is just fine to be in the list -- do not close list item here.
-    " if processed && len(state.lists)
-      " call s:close_tag_list(state.lists, lines)
-    " endif
-    if !processed
-      let [processed, lines, state.math] = s:process_tag_math(line, state.math)
-    endif
-    if processed && len(state.table)
-      let state.table = s:close_tag_table(state.table, lines, state.header_ids)
-    endif
-    if processed && state.deflist
-      let state.deflist = s:close_tag_def_list(state.deflist, lines)
-    endif
-    if processed && state.quote
-      let state.quote = s:close_tag_quote(state.quote, lines)
-    endif
-    if processed && state.para
-      let state.para = s:close_tag_para(state.para, lines)
-    endif
-    call extend(res_lines, lines)
   endif
   "}}}
 
@@ -1312,7 +1312,7 @@ function! s:use_custom_wiki2html() "{{{
 endfunction " }}}
 
 function! vimwiki#html#CustomWiki2HTML(path, wikifile, force) "{{{
-  call vimwiki#base#mkdir(a:path)
+  call vimwiki#path#mkdir(a:path)
   echomsg system(VimwikiGet('custom_wiki2html'). ' '.
       \ a:force. ' '.
       \ VimwikiGet('syntax'). ' '.
@@ -1351,7 +1351,7 @@ function! vimwiki#html#Wiki2HTML(path_html, wikifile) "{{{
     "  echo 'Generating HTML ... '
     "endif
 
-    call vimwiki#base#mkdir(path_html)
+    call vimwiki#path#mkdir(path_html)
 
     " nohtml placeholder -- to skip html generation.
     let nohtml = 0
@@ -1493,7 +1493,7 @@ function! vimwiki#html#WikiAll2HTML(path_html) "{{{
   let &eventignore = save_eventignore
 
   let path_html = expand(a:path_html)
-  call vimwiki#base#mkdir(path_html)
+  call vimwiki#path#mkdir(path_html)
 
   echomsg 'Deleting non-wiki html files...'
   call s:delete_html_files(path_html)
