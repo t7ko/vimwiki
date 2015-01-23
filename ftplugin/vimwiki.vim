@@ -32,6 +32,8 @@ execute 'setlocal suffixesadd='.VimwikiGet('ext')
 setlocal isfname-=[,]
 " gf}}}
 
+setlocal tags+=./.tags
+
 " MISC }}}
 
 " COMPLETION {{{
@@ -49,9 +51,25 @@ function! Complete_wikifiles(findstart, base)
         return startofinlinelink
       endif
     endif
+    let startoftag = match(line, ':\zs[^:[:space:]]*$')
+    if startoftag != -1
+      return startoftag
+    endif
     return -1
   else
-    if a:base !~ '#'
+    " Completion works for wikilinks/anchors, and for tags.  So first we have
+    " to find out what we're about to complete.
+    let column = col('.')
+    let line = getline('.')[:(column - len(a:base))]
+    let char_before_start = line[-1:-1]
+    if char_before_start == ':'
+      " Tags completion
+      let metadata = vimwiki#base#load_tags_metadata()
+      let tags = vimwiki#base#get_tags(metadata)
+      call filter(tags,
+            \ "v:val[:" . (len(a:base)-1) . "] == '" . substitute(a:base, "'", "''", '') . "'" )
+      return tags
+    elseif a:base !~ '#'
       " we look for wiki files
 
       if a:base =~# '^wiki\d:'
@@ -291,6 +309,13 @@ command! -buffer VimwikiTableMoveColumnRight call vimwiki#tbl#move_column_right(
 " diary commands
 command! -buffer VimwikiDiaryNextDay call vimwiki#diary#goto_next_day()
 command! -buffer VimwikiDiaryPrevDay call vimwiki#diary#goto_prev_day()
+
+" tags commands
+command! -buffer VimwikiRebuildTags call vimwiki#base#update_tags(1)
+command! -buffer -nargs=* -complete=custom,vimwiki#base#complete_tags
+      \ VimwikiSearchTags VimwikiSearch /:<args>:/
+command! -buffer -nargs=* -complete=custom,vimwiki#base#complete_tags
+      \ VimwikiGenerateTags call vimwiki#base#generate_tags(<f-args>)
 
 " COMMANDS }}}
 
@@ -622,6 +647,13 @@ if VimwikiGet('auto_toc')
   " Automatically update the TOC *before* the file is written
   augroup vimwiki
     au BufWritePre <buffer> call vimwiki#base#table_of_contents(0)
+  augroup END
+endif
+
+if VimwikiGet('auto_tags')
+  " Automatically update tags metadata on page write.
+  augroup vimwiki
+    au BufWritePost <buffer> call vimwiki#base#update_tags(0)
   augroup END
 endif
 " AUTOCOMMANDS }}}
