@@ -525,7 +525,7 @@ hi def link VimwikiMarkers Normal
 hi def link VimwikiEqIn Number
 hi def link VimwikiEqInT VimwikiEqIn
 
-hi def VimwikiBold term=bold cterm=bold gui=bold
+hi def VimwikiBold term=bold,underline cterm=bold,underline gui=bold,underline
 hi def link VimwikiBoldT VimwikiBold
 
 hi def VimwikiItalic term=italic cterm=italic gui=italic
