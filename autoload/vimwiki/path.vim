@@ -11,13 +11,13 @@ endfunction "}}}
 
 " Define path-compare function, either case-sensitive or not, depending on OS.
 "{{{ " function! vimwiki#path#is_equal(p1, p2)
-if has('win32')
+if vimwiki#u#is_windows()
   function! vimwiki#path#is_equal(p1, p2)
     return a:p1 ==? a:p2
   endfunction
 else
   function! vimwiki#path#is_equal(p1, p2)
-    return a:p1 == a:p2
+    return a:p1 ==# a:p2
   endfunction
 endif "}}}
 
@@ -26,7 +26,7 @@ function! vimwiki#path#normalize(path) "{{{
   let path = a:path
   while 1
     let result = substitute(path, '/[^/]\+/\.\.', '', '')
-    if result == path
+    if result ==# path
       break
     endif
     let path = result
@@ -50,7 +50,7 @@ endfunction "}}}
 function! vimwiki#path#is_link_to_dir(link) "{{{
   " Check if link is to a directory.
   " It should be ended with \ or /.
-  if a:link =~ '.\+[/\\]$'
+  if a:link =~# '.\+[/\\]$'
     return 1
   endif
   return 0
@@ -128,7 +128,8 @@ function! vimwiki#path#mkdir(path, ...) "{{{
       let path = iconv(path, &enc, g:vimwiki_w32_dir_enc)
     endif
 
-    if a:0 && a:1 && tolower(input("Vimwiki: Make new directory: ".path."\n [Y]es/[n]o? ")) !~ "^y"
+    if a:0 && a:1 && input("Vimwiki: Make new directory: "
+          \ .path."\n [y]es/[N]o? ") !~? '^y'
       return 0
     endif
 
