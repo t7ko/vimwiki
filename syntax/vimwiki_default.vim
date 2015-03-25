@@ -1,8 +1,7 @@
 " vim:tabstop=2:shiftwidth=2:expandtab:foldmethod=marker:textwidth=79
 " Vimwiki syntax file
-" Default syntax
-" Author: Maxim Kim <habamax@gmail.com>
-" Home: http://code.google.com/p/vimwiki/
+" Desc: Defines default syntax
+" Home: https://github.com/vimwiki/vimwiki/
 
 " text: $ equation_inline $
 let g:vimwiki_rxEqIn = '\$[^$`]\+\$'
@@ -92,5 +91,5 @@ let g:vimwiki_rxMathStart = '{{\$'
 let g:vimwiki_rxMathEnd = '}}\$'
 
 let g:vimwiki_rxComment = '^\s*%%.*$'
-let g:vimwiki_rxTags = '\(^\|\s\)\zs:\([^:[:space:]]\+:\)\+\ze\(\s\|$\)'
+let g:vimwiki_rxTags = '\%(^\|\s\)\@<=:\%([^:[:space:]]\+:\)\+\%(\s\|$\)\@='
 " see also g:vimwiki_default_tag_search

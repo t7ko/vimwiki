@@ -1,7 +1,7 @@
 " vim:tabstop=2:shiftwidth=2:expandtab:foldmethod=marker:textwidth=79
 " Vimwiki autoload plugin file
-" Author: Maxim Kim <habamax@gmail.com>
-" Home: http://code.google.com/p/vimwiki/
+" Desc: Basic functionality
+" Home: https://github.com/vimwiki/vimwiki/
 
 if exists("g:loaded_vimwiki_auto") || &cp
   finish
@@ -224,6 +224,143 @@ function! vimwiki#base#invsubdir(subdir) " {{{
   return substitute(a:subdir, '[^/\.]\+/', '../', 'g')
 endfunction " }}}
 
+
+" Returns: the number of the wiki a file belongs to
+function! vimwiki#base#find_wiki(path) "{{{
+  let path = vimwiki#path#path_norm(vimwiki#path#chomp_slash(a:path))
+  let idx = 0
+  while idx < len(g:vimwiki_list)
+    let idx_path = expand(VimwikiGet('path', idx))
+    let idx_path = vimwiki#path#path_norm(vimwiki#path#chomp_slash(idx_path))
+    if vimwiki#path#is_equal(
+          \ vimwiki#path#path_common_pfx(idx_path, path), idx_path)
+      return idx
+    endif
+    let idx += 1
+  endwhile
+
+  " an orphan page has been detected
+  return -1
+endfunction "}}}
+
+
+" THE central function of Vimwiki. Extract infos about the target from a link.
+" If the second parameter is present, which should be an absolute file path, it
+" is assumed that the link appears in that file. Without it, the current file
+" is used.
+function! vimwiki#base#resolve_link(link_text, ...) "{{{
+  if a:0
+    let source_wiki = vimwiki#base#find_wiki(a:1)
+    let source_file = a:1
+  else
+    let source_wiki = g:vimwiki_current_idx
+    let source_file = expand('%:p')
+  endif
+
+  let link_text = a:link_text
+
+  " if link is schemeless add wikiN: scheme
+  if link_text !~# g:vimwiki_rxSchemeUrl
+    let link_text = 'wiki'.source_wiki.':'.link_text
+  endif
+
+
+  let link_infos = {
+        \ 'index': -1,
+        \ 'scheme': '',
+        \ 'filename': '',
+        \ 'anchor': '',
+        \ }
+
+
+  " extract scheme
+  let link_infos.scheme = matchstr(link_text, g:vimwiki_rxSchemeUrlMatchScheme)
+  if !(link_infos.scheme =~# '\mwiki\d\+' || link_infos.scheme ==# 'diary' ||
+        \ link_infos.scheme ==# 'local' || link_infos.scheme ==# 'file')
+    let link_infos.filename = ''   " malformed link
+    return link_infos
+  endif
+  let link_text = matchstr(link_text, g:vimwiki_rxSchemeUrlMatchUrl)
+
+  let is_wiki_link = link_infos.scheme =~# '\mwiki\d\+' ||
+        \ link_infos.scheme ==# 'diary'
+
+  " extract anchor
+  if is_wiki_link
+    let split_lnk = split(link_text, '#', 1)
+    let link_text = split_lnk[0]
+    if len(split_lnk) > 1 && split_lnk[-1] != ''
+      let link_infos.anchor = join(split_lnk[1:], '#')
+    endif
+    if link_text == ''  " because the link was of the form '#anchor'
+      let link_text = fnamemodify(source_file, ':p:t:r')
+    endif
+  endif
+
+  " check if absolute or relative path
+  if is_wiki_link && link_text[0] == '/'
+    let link_text = link_text[1:]
+    let is_relative = 0
+  elseif !is_wiki_link && (link_text[0] == '/' ||
+        \ (link_text =~? '\m^\a:' && vimwiki#u#is_windows()))
+    let is_relative = 0
+  else
+    let is_relative = 1
+    let root_dir = fnamemodify(source_file, ':p:h') . '/'
+  endif
+
+
+  " extract the other items depending on the scheme
+  if link_infos.scheme =~# '\mwiki\d\+'
+    let link_infos.index = eval(matchstr(link_infos.scheme, '\D\+\zs\d\+\ze'))
+    if link_infos.index < 0 || link_infos.index >= len(g:vimwiki_list)
+      let link_infos.filename = ''
+      return link_infos
+    endif
+
+    if !is_relative || link_infos.index != source_wiki
+      let root_dir = VimwikiGet('path', link_infos.index)
+    endif
+
+    let link_infos.filename = root_dir . link_text
+
+    if vimwiki#path#is_link_to_dir(link_text)
+      if g:vimwiki_dir_link != ''
+        let link_infos.filename .= g:vimwiki_dir_link .
+              \ VimwikiGet('ext', link_infos.index)
+      endif
+    else
+      let link_infos.filename .= VimwikiGet('ext', link_infos.index)
+    endif
+
+  elseif link_infos.scheme ==# 'diary'
+    let link_infos.index = source_wiki
+
+    let link_infos.filename =
+          \ VimwikiGet('path', link_infos.index) .
+          \ VimwikiGet('diary_rel_path', link_infos.index) .
+          \ link_text .
+          \ VimwikiGet('ext', link_infos.index)
+  elseif (link_infos.scheme ==# 'file' && is_relative) ||
+        \ link_infos.scheme ==# 'local'
+    let link_infos.filename = root_dir . link_text
+  else " absolute file link
+    " collapse repeated leading "/"'s within a link
+    let link_text = substitute(link_text, '\m^/*', '/', '')
+    " convert "/~..." into "~..." for fnamemodify
+    let link_text = substitute(link_text, '\m^/\~', '\~', '')
+    " convert /C: to C: (or fnamemodify(...":p:h") interpret it as C:\C:)
+    if vimwiki#u#is_windows()
+      let link_text = substitute(link_text, '\m^/\ze[[:alpha:]]:', '', '')
+    endif
+    let link_infos.filename = link_text
+  endif
+
+  let link_infos.filename = vimwiki#path#normalize(link_infos.filename)
+  return link_infos
+endfunction "}}}
+
+
 " vimwiki#base#resolve_scheme
 function! vimwiki#base#resolve_scheme(lnk, as_html, ...) " {{{ Resolve scheme
   let quiet = a:0 && a:1 ? 1 : 0
@@ -405,31 +542,22 @@ endfunction "}}}
 
 " vimwiki#base#open_link
 function! vimwiki#base#open_link(cmd, link, ...) "{{{
-  let [idx, scheme, path, subdir, lnk, ext, url, anchor] =
-        \ vimwiki#base#resolve_scheme(a:link, 0)
+  let link_infos = vimwiki#base#resolve_link(a:link)
 
-  " wikilinks of the form [[#anchor]]
-  if url == '' && anchor != ''
-    let lnk = expand('%:t:r')
-    let url = path.subdir.lnk.ext
+  if g:vimwiki_debug
+    echom 'open_link:' string(link_infos)
   endif
 
-  if url == ''
-    if g:vimwiki_debug
-      echom 'open_link: idx='.idx.', scheme='.scheme.', path='.path.', subdir='.subdir.', lnk='.lnk.', ext='.ext.', url='.url.', anchor='.anchor
-    endif
+  if link_infos.filename == ''
     echom 'Vimwiki Error: Unable to resolve link!'
     return
   endif
 
-  let update_prev_link = ( (scheme == '' || scheme =~# 'wiki' || scheme =~# 'diary')
-        \ && !vimwiki#path#is_equal(lnk, expand('%:t:r'))
-        \ ? 1 : 0)
+  let is_wiki_link = link_infos.scheme =~# '\mwiki\d\+'
+        \ || link_infos.scheme =~# 'diary'
 
-  let use_system_open = (
-        \ scheme == '' ||
-        \ scheme =~# 'wiki' ||
-        \ scheme =~# 'diary' ? 0 : 1)
+  let update_prev_link = is_wiki_link &&
+        \ !vimwiki#path#is_equal(link_infos.filename, expand('%:p'))
 
   let vimwiki_prev_link = []
   " update previous link for wiki pages
@@ -442,19 +570,15 @@ function! vimwiki#base#open_link(cmd, link, ...) "{{{
   endif
 
   " open/edit
-  if g:vimwiki_debug
-    echom 'open_link: idx='.idx.', scheme='.scheme.', path='.path.', subdir='.subdir.', lnk='.lnk.', ext='.ext.', url='.url.'anchor='.anchor
-  endif
-
-  if use_system_open
-    call vimwiki#base#system_open_link(url)
-  else
-    call vimwiki#base#edit_file(a:cmd, url, anchor,
+  if is_wiki_link
+    call vimwiki#base#edit_file(a:cmd, link_infos.filename, link_infos.anchor,
           \ vimwiki_prev_link, update_prev_link)
-    if idx != g:vimwiki_current_idx
+    if link_infos.index != g:vimwiki_current_idx
       " this call to setup_buffer_state may not be necessary
-      call vimwiki#base#setup_buffer_state(idx)
+      call vimwiki#base#setup_buffer_state(link_infos.index)
     endif
+  else
+    call vimwiki#base#system_open_link(link_infos.filename)
   endif
 endfunction " }}}
 
@@ -496,7 +620,7 @@ endfunction " }}}
 
 " vimwiki#base#generate_links
 function! vimwiki#base#generate_links() "{{{
-  let links = vimwiki#base#get_wikilinks(g:vimwiki_current_idx)
+  let links = vimwiki#base#get_wikilinks(g:vimwiki_current_idx, 0)
 
   call append(line('$'), substitute(g:vimwiki_rxH1_Template, '__Header__', 'Generated Links', ''))
 
@@ -529,7 +653,7 @@ function! vimwiki#base#backlinks() "{{{
   let locations = []
   for idx in range(len(g:vimwiki_list))
     let syntax = VimwikiGet('syntax', idx)
-    let wikifiles = s:find_files(idx, 0)
+    let wikifiles = vimwiki#base#find_files(idx, 0)
     for source_file in wikifiles
       let links = s:get_links(source_file, idx)
       for [target_file, _, lnum, col] in links
@@ -553,7 +677,7 @@ endfunction "}}}
 " Returns: a list containing all files of the given wiki as absolute file path.
 " If the given wiki number is negative, the diary of the current wiki is used
 " If the second argument is not zero, only directories are found
-function! s:find_files(wiki_nr, directories_only)
+function! vimwiki#base#find_files(wiki_nr, directories_only)
   let wiki_nr = a:wiki_nr
   if wiki_nr >= 0
     let root_directory = VimwikiGet('path', wiki_nr)
@@ -577,10 +701,12 @@ function! s:find_files(wiki_nr, directories_only)
   return split(globpath(root_directory, pattern), '\n')
 endfunction
 
-" Returns: a list containing the links to all wiki files for the given wiki
-" If the given wiki number is negative, the diary of the current wiki is used
-function! vimwiki#base#get_wikilinks(wiki_nr)
-  let files = s:find_files(a:wiki_nr, 0)
+" Returns: a list containing the links to get from the current file to all wiki
+" files in the given wiki.
+" If the given wiki number is negative, the diary of the current wiki is used.
+" If also_absolute_links is nonzero, also return links of the form /file
+function! vimwiki#base#get_wikilinks(wiki_nr, also_absolute_links)
+  let files = vimwiki#base#find_files(a:wiki_nr, 0)
   if a:wiki_nr == g:vimwiki_current_idx
     let cwd = vimwiki#path#wikify_path(expand('%:p:h'))
   elseif a:wiki_nr < 0
@@ -594,21 +720,38 @@ function! vimwiki#base#get_wikilinks(wiki_nr)
     let wikifile = vimwiki#path#relpath(cwd, wikifile)
     call add(result, wikifile)
   endfor
+  if a:also_absolute_links
+    for wikifile in files
+      if a:wiki_nr == g:vimwiki_current_idx
+        let cwd = VimwikiGet('path')
+      elseif a:wiki_nr < 0
+        let cwd = VimwikiGet('path').VimwikiGet('diary_rel_path')
+      endif
+      let wikifile = fnamemodify(wikifile, ':r') " strip extension
+      let wikifile = '/'.vimwiki#path#relpath(cwd, wikifile)
+      call add(result, wikifile)
+    endfor
+  endif
   return result
 endfunction
 
-" Returns: a list containing 
+" Returns: a list containing the links to all directories from the current file
 function! vimwiki#base#get_wiki_directories(wiki_nr)
-  let dirs = s:find_files(a:wiki_nr, 1)
+  let dirs = vimwiki#base#find_files(a:wiki_nr, 1)
   if a:wiki_nr == g:vimwiki_current_idx
     let cwd = vimwiki#path#wikify_path(expand('%:p:h'))
+    let root_dir = VimwikiGet('path')
   else
     let cwd = VimwikiGet('path', a:wiki_nr)
   endif
   let result = ['./']
   for wikidir in dirs
-    let wikidir = vimwiki#path#relpath(cwd, wikidir).'/'
-    call add(result, wikidir)
+    let wikidir_relative = vimwiki#path#relpath(cwd, wikidir).'/'
+    call add(result, wikidir_relative)
+    if a:wiki_nr == g:vimwiki_current_idx
+      let wikidir_absolute = '/'.vimwiki#path#relpath(root_dir, wikidir).'/'
+      call add(result, wikidir_absolute)
+    endif
   endfor
   return result
 endfunction
@@ -714,50 +857,6 @@ function! s:jump_to_anchor(anchor) "{{{
   endfor
 endfunction "}}}
 
-" Returns: the absolute file path (and possibly an anchor) of the target file,
-" if a link with the given link text appears in the given wiki file, which
-" belongs to the given wiki nr
-function! s:link_target(source_file, wiki_nr, link_text) "{{{
-  let [target_idx, scheme, path, subdir, lnk, ext, url, anchor] =
-        \ vimwiki#base#resolve_scheme(a:link_text, 0, 1)
-  let source_dir = fnamemodify(a:source_file, ':p:h').'/'
-
-  if lnk =~# '/$' " link to a directory
-    return []
-  elseif url == '' && anchor != '' " only anchor
-    return [fnamemodify(a:source_file, ':p'), anchor]
-  elseif scheme ==# 'file'
-    return [url, '']
-  elseif scheme ==# 'local'
-    return [vimwiki#path#normalize(source_dir.lnk), '']
-  elseif target_idx >= len(g:vimwiki_list) " a malformed link
-    return ['', '']
-  elseif scheme !~# '^wiki\d\+\|diary' " unknown scheme
-    return []
-  endif
-
-  if scheme ==# 'diary'
-    let root_dir = VimwikiGet('path',a:wiki_nr).
-          \ VimwikiGet('diary_rel_path', a:wiki_nr)
-    let ext = VimwikiGet('ext', a:wiki_nr)
-  else
-    " a schemeless link is like a link to the current wiki
-    if a:link_text !~# '^wiki\d\+:'
-      let target_idx = a:wiki_nr
-    endif
-
-    if target_idx == a:wiki_nr
-      let root_dir = source_dir
-    else
-      let root_dir = VimwikiGet('path', target_idx)
-    endif
-    let ext = VimwikiGet('ext', target_idx)
-  endif
-
-  let target_file = root_dir . lnk . ext
-  return [vimwiki#path#normalize(target_file), anchor]
-endfunction "}}}
-
 " Params: full path to a wiki file and its wiki number
 " Returns: a list of all links inside the wiki file
 " Every list item has the form
@@ -783,11 +882,9 @@ function! s:get_links(wikifile, idx) "{{{
         break
       endif
       let link_count += 1
-      let target = s:link_target(a:wikifile, a:idx, link_text)
-      if !empty(target)
-        call add(target, lnum)
-        call add(target, col)
-        call add(links, target)
+      let target = vimwiki#base#resolve_link(link_text, a:wikifile)
+      if target.filename != ''
+        call add(links, [target.filename, target.anchor, lnum, col])
       endif
     endwhile
   endfor
@@ -801,7 +898,7 @@ function! vimwiki#base#check_links() "{{{
   let errors = []
   for idx in range(len(g:vimwiki_list))
     let syntax = VimwikiGet('syntax', idx)
-    let wikifiles = s:find_files(idx, 0)
+    let wikifiles = vimwiki#base#find_files(idx, 0)
     for wikifile in wikifiles
       let links_of_files[wikifile] = s:get_links(wikifile, idx)
       let anchors_of_files[wikifile] = vimwiki#base#get_anchors(wikifile, syntax)
@@ -819,11 +916,18 @@ function! vimwiki#base#check_links() "{{{
                 \'text': "there is no such anchor: ".target_anchor})
         endif
       else
-        if filereadable(target_file) " maybe it's a non-wiki file
-          let anchors_of_files[target_file] = []
+        if target_file =~ '/$'  " maybe it's a link to a directory
+          if !isdirectory(target_file)
+            call add(errors, {'filename':wikifile, 'lnum':lnum, 'col':col,
+                  \'text': "there is no such directory: ".target_file})
+          endif
         else
-          call add(errors, {'filename':wikifile, 'lnum':lnum, 'col':col,
-                \'text': "there is no such file: ".target_file})
+          if filereadable(target_file) " maybe it's a non-wiki file
+            let anchors_of_files[target_file] = []
+          else
+            call add(errors, {'filename':wikifile, 'lnum':lnum, 'col':col,
+                  \'text': "there is no such file: ".target_file})
+          endif
         endif
       endif
     endfor
@@ -1949,271 +2053,6 @@ endfunction "}}}
 
 " }}}
 
-" TAGS functions {{{
-
-let s:TAGS_METADATA_FILE_NAME = '.tags'
-
-" Tags metadata in-memory format:
-" metadata := [ entry, ... ]
-" entry := { 'tagname':..., 'pagename':..., 'lineno':..., 'link':... }
-
-" Tags metadata in-file format:
-"
-" Is based on CTags format (see |tags-file-format|).
-"
-" {tagaddress} is set to lineno.  We'll let vim search by exact line number; we
-" can afford that, we assume metadata file is always updated before use.
-"
-" Pagename and link are not saved in standard ctags fields, so we'll add
-" an optional field, "vimwiki:".  In this field, we encode tab-separated values
-" of missing parameters -- "pagename" and "link".
-
-" vimwiki#base#update_tags
-"   Update tags metadata.
-"   a:full_rebuild == 1: re-scan entire wiki
-"   a:full_rebuild == 0: only re-scan current page
-function! vimwiki#base#update_tags(full_rebuild) "{{{
-  if !a:full_rebuild
-    " Updating for one page (current)
-    let page_name = expand('%:t:r')
-    " Collect tags in current file
-    let tags = vimwiki#base#scan_tags(getline(1, '$'), page_name)
-    " Load metadata file
-    let metadata = vimwiki#base#load_tags_metadata()
-    " Drop old tags
-    let metadata = vimwiki#base#remove_page_from_tags(metadata, page_name)
-    " Merge in the new ones
-    let metadata = vimwiki#base#merge_tags(metadata, tags)
-    " Save
-    call vimwiki#base#write_tags_metadata(metadata)
-  else " full rebuild
-    let files = s:find_files(g:vimwiki_current_idx, 0)
-    let metadata = []
-    for file in files
-      let page_name = fnamemodify(file, ':t:r')
-      let tags = vimwiki#base#scan_tags(readfile(file), page_name)
-      let metadata = vimwiki#base#merge_tags(metadata, tags)
-    endfor
-    call vimwiki#base#write_tags_metadata(metadata)
-  endif
-endfunction " }}}
-
-" vimwiki#base#scan_tags
-"   Scans the list of text lines (argument) and produces tags metadata.
-function! vimwiki#base#scan_tags(lines, page_name) "{{{
-
-  let metadata = []
-  let page_name = a:page_name
-
-  " Code wireframe to scan for headers -- borrowed from
-  " vimwiki#base#get_anchors(), with minor modifications.
-
-  let rxheader = g:vimwiki_{VimwikiGet('syntax')}_header_search
-  let rxtag = g:vimwiki_{VimwikiGet('syntax')}_tag_search
-
-  let anchor_level = ['', '', '', '', '', '', '']
-  let current_complete_anchor = ''
-
-  let PROXIMITY_LINES_NR = 5
-  let header_line_nr = - (2 * PROXIMITY_LINES_NR)
-
-  for line_nr in range(1, len(a:lines))
-    let line = a:lines[line_nr - 1]
-
-    " process headers
-    let h_match = matchlist(line, rxheader)
-    if !empty(h_match) " got a header
-      let header_line_nr = line_nr
-      let header = vimwiki#u#trim(h_match[2])
-      let level = len(h_match[1])
-      let anchor_level[level-1] = header
-      for l in range(level, 6)
-        let anchor_level[l] = ''
-      endfor
-      if level == 1
-        let current_complete_anchor = header
-      else
-        let current_complete_anchor = ''
-        for l in range(level-1)
-          if anchor_level[l] != ''
-            let current_complete_anchor .= anchor_level[l].'#'
-          endif
-        endfor
-        let current_complete_anchor .= header
-      endif
-      continue " tags are not allowed in headers
-    endif
-
-    " TODO ignore verbatim blocks
-
-    " Scan line for tags.  There can be many of them.
-    let str = line
-    while 1
-      let tag_group = matchstr(str, rxtag)
-      if tag_group == ''
-        break
-      endif
-      let tagend = matchend(str, rxtag)
-      let str = str[(tagend):]
-      for tag in split(tag_group, ':')
-        " Create metadata entry
-        let entry = {}
-        let entry.tagname  = tag
-        let entry.pagename = page_name
-        let entry.lineno   = line_nr
-        if line_nr <= (header_line_nr + PROXIMITY_LINES_NR)
-          let entry.link   = page_name . '#' . current_complete_anchor
-        elseif header_line_nr < 0
-          " Tag appeared before the first header
-          let entry.link   = page_name
-        else
-          let entry.link   = page_name . '#' . tag
-        endif
-        call add(metadata, entry)
-      endfor
-    endwhile
-
-  endfor " loop over lines
-  return metadata
-endfunction " }}}
-
-" vimwiki#base#metadata_file_path
-"   Returns tags metadata file path
-function! vimwiki#base#metadata_file_path() abort "{{{
-  return fnamemodify(VimwikiGet('path') . '/' . s:TAGS_METADATA_FILE_NAME, ':p')
-endfunction " }}}
-
-" vimwiki#base#load_tags_metadata
-"   Loads tags metadata from file, returns a dictionary
-function! vimwiki#base#load_tags_metadata() abort "{{{
-  let metadata_path = vimwiki#base#metadata_file_path()
-  if !filereadable(metadata_path)
-    return []
-  endif
-  let metadata = []
-  for line in readfile(metadata_path)
-    if line =~ '^!_TAG_FILE_'
-      continue
-    endif
-    let parts = matchlist(line, '^\(.\{-}\);"\(.*\)$')
-    if parts[0] == '' || parts[1] == '' || parts[2] == ''
-      throw 'VimwikiTags1: Metadata file corrupted'
-    endif
-    let std_fields = split(parts[1], '\t')
-    if len(std_fields) != 3
-      throw 'VimwikiTags2: Metadata file corrupted'
-    endif
-    let vw_part = parts[2]
-    if vw_part[0] != "\t"
-      throw 'VimwikiTags3: Metadata file corrupted'
-    endif
-    let vw_fields = split(vw_part[1:], "\t")
-    if len(vw_fields) != 1 || vw_fields[0] !~ '^vimwiki:'
-      throw 'VimwikiTags4: Metadata file corrupted'
-    endif
-    let vw_data = substitute(vw_fields[0], '^vimwiki:', '', '')
-    let vw_data = substitute(vw_data, '\\n', "\n", 'g')
-    let vw_data = substitute(vw_data, '\\r', "\r", 'g')
-    let vw_data = substitute(vw_data, '\\t', "\t", 'g')
-    let vw_data = substitute(vw_data, '\\\\', "\\", 'g')
-    let vw_fields = split(vw_data, "\t")
-    if len(vw_fields) != 2
-      throw 'VimwikiTags5: Metadata file corrupted'
-    endif
-    let entry = {}
-    let entry.tagname  = std_fields[0]
-    let entry.pagename = vw_fields[0]
-    let entry.lineno   = std_fields[2]
-    let entry.link     = vw_fields[1]
-    call add(metadata, entry)
-  endfor
-  return metadata
-endfunction " }}}
-
-" vimwiki#base#remove_page_from_tags
-"   Removes all entries for given page from metadata in-place.  Returns updated
-"   metadata (just in case).
-function! vimwiki#base#remove_page_from_tags(metadata, page_name) "{{{
-  let metadata = filter(a:metadata,
-        \ "v:val.pagename != '" . substitute(a:page_name, "'", "''", '') . "'")
-  return metadata
-endfunction " }}}
-
-" vimwiki#base#merge_tags
-"   Merges two tags metadata objects into (new) one.
-function! vimwiki#base#merge_tags(metadata1, metadata2) "{{{
-  return a:metadata1 + a:metadata2
-endfunction " }}}
-
-" vimwiki#base#write_tags_metadata
-"   Saves metadata object into a file. Throws exceptions in case of problems.
-function! vimwiki#base#write_tags_metadata(metadata) "{{{
-  let metadata_path = vimwiki#base#metadata_file_path()
-  let entries = []
-  for entry in a:metadata
-    let entry_data = entry.pagename . "\t" . entry.link
-    let entry_data = substitute(entry_data, "\\", '\\\\', 'g')
-    let entry_data = substitute(entry_data, "\t", '\\t', 'g')
-    let entry_data = substitute(entry_data, "\r", '\\r', 'g')
-    let entry_data = substitute(entry_data, "\n", '\\n', 'g')
-    call add(entries,
-          \   entry.tagname  . "\t"
-          \ . entry.pagename . VimwikiGet('ext') . "\t"
-          \ . entry.lineno
-          \ . ';"'
-          \ . "\t" . "vimwiki:" . entry_data
-          \)
-  endfor
-  call sort(entries)
-  call insert(entries, "!_TAG_FILE_SORTED\t1\t{anything}")
-  call writefile(entries, metadata_path)
-endfunction " }}}
-
-" vimwiki#base#get_tags
-"   Returns list of unique tags found in metadata
-function! vimwiki#base#get_tags(metadata) "{{{
-  let tags = {}
-  for entry in a:metadata
-    let tags[entry.tagname] = 1
-  endfor
-  return keys(tags)
-endfunction " }}}
-
-" vimwiki#base#generate_tags
-"   Similar to vimwiki#base#generate_links.  In the current buffer, appends
-"   tags and references to all their instances.  If no arguments (tags) are
-"   specified, outputs all tags.
-function! vimwiki#base#generate_tags(...) abort "{{{
-  let need_all_tags = (a:0 == 0)
-  let specific_tags = a:000
-
-  let metadata = vimwiki#base#load_tags_metadata()
-
-  call append(line('$'), [
-        \ '',
-        \ substitute(g:vimwiki_rxH1_Template, '__Header__', 'Generated Tags', '') ])
-
-  call sort(metadata)
-
-  let bullet = repeat(' ', vimwiki#lst#get_list_margin()).
-        \ vimwiki#lst#default_symbol().' '
-  let current_tag = ''
-  for entry in metadata
-    if need_all_tags || index(specific_tags, entry.tagname) != -1
-      if entry.tagname != current_tag
-        let current_tag = entry.tagname
-        call append(line('$'), [
-              \ '',
-              \ substitute(g:vimwiki_rxH2_Template, '__Header__', entry.tagname, ''),
-              \ '' ])
-      endif
-      call append(line('$'), bullet . '[[' . entry.link . ']]')
-    endif
-  endfor
-endfunction " }}}
-
-" }}}
-
 " Command completion functions {{{
 
 " vimwiki#base#complete_links
@@ -2221,15 +2060,6 @@ function! vimwiki#base#complete_links(ArgLead, CmdLine, CursorPos) abort " {{{
   " We can safely ignore args if we use -custom=complete option, Vim engine
   " will do the job of filtering.
   return vimwiki#base#get_globlinks()
-endfunction " }}}
-
-" vimwiki#base#complete_tags
-function! vimwiki#base#complete_tags(ArgLead, CmdLine, CursorPos) abort " {{{
-  " We can safely ignore args if we use -custom=complete option, Vim engine
-  " will do the job of filtering.
-  let metadata = vimwiki#base#load_tags_metadata()
-  let taglist = vimwiki#base#get_tags(metadata)
-  return join(taglist, "\n")
 endfunction " }}}
 
 " vimwiki#base#complete_links_escaped

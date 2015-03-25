@@ -1,7 +1,6 @@
 " vim:tabstop=2:shiftwidth=2:expandtab:foldmethod=marker:textwidth=79
 " Vimwiki filetype plugin file
-" Author: Maxim Kim <habamax@gmail.com>
-" Home: http://code.google.com/p/vimwiki/
+" Home: https://github.com/vimwiki/vimwiki/
 
 if exists("b:did_ftplugin")
   finish
@@ -68,8 +67,8 @@ function! Complete_wikifiles(findstart, base)
       return []
     elseif s:line_context == ':'
       " Tags completion
-      let metadata = vimwiki#base#load_tags_metadata()
-      let tags = vimwiki#base#get_tags(metadata)
+      let metadata = vimwiki#tags#load_tags_metadata()
+      let tags = vimwiki#tags#get_tags(metadata)
       if a:base != ''
         call filter(tags,
             \ "v:val[:" . (len(a:base)-1) . "] == '" . substitute(a:base, "'", "''", '') . "'" )
@@ -95,7 +94,7 @@ function! Complete_wikifiles(findstart, base)
         let scheme = ''
       endif
 
-      let links = vimwiki#base#get_wikilinks(wikinumber)
+      let links = vimwiki#base#get_wikilinks(wikinumber, 0)
       let result = []
       for wikifile in links
         if wikifile =~ '^'.vimwiki#u#escape(prefix)
@@ -109,9 +108,9 @@ function! Complete_wikifiles(findstart, base)
 
       let segments = split(a:base, '#', 1)
       let given_wikifile = segments[0] == '' ? expand('%:t:r') : segments[0]
-      let link_infos = vimwiki#base#resolve_scheme(given_wikifile.'#', 0, 1)
-      let wikifile = link_infos[6]
-      let syntax = VimwikiGet('syntax', link_infos[0])
+      let link_infos = vimwiki#base#resolve_link(given_wikifile.'#')
+      let wikifile = link_infos.filename
+      let syntax = VimwikiGet('syntax', link_infos.index)
       let anchors = vimwiki#base#get_anchors(wikifile, syntax)
 
       let filtered_anchors = []
@@ -317,11 +316,11 @@ command! -buffer VimwikiDiaryNextDay call vimwiki#diary#goto_next_day()
 command! -buffer VimwikiDiaryPrevDay call vimwiki#diary#goto_prev_day()
 
 " tags commands
-command! -buffer VimwikiRebuildTags call vimwiki#base#update_tags(1)
-command! -buffer -nargs=* -complete=custom,vimwiki#base#complete_tags
+command! -buffer VimwikiRebuildTags call vimwiki#tags#update_tags(1)
+command! -buffer -nargs=* -complete=custom,vimwiki#tags#complete_tags
       \ VimwikiSearchTags VimwikiSearch /:<args>:/
-command! -buffer -nargs=* -complete=custom,vimwiki#base#complete_tags
-      \ VimwikiGenerateTags call vimwiki#base#generate_tags(<f-args>)
+command! -buffer -nargs=* -complete=custom,vimwiki#tags#complete_tags
+      \ VimwikiGenerateTags call vimwiki#tags#generate_tags(<f-args>)
 
 " COMMANDS }}}
 
@@ -659,7 +658,7 @@ endif
 if VimwikiGet('auto_tags')
   " Automatically update tags metadata on page write.
   augroup vimwiki
-    au BufWritePost <buffer> call vimwiki#base#update_tags(0)
+    au BufWritePost <buffer> call vimwiki#tags#update_tags(0)
   augroup END
 endif
 " AUTOCOMMANDS }}}
