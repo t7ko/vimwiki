@@ -786,7 +786,8 @@ absolute to the wiki root directory, that is, the link [[/index]] always opens
 the file /path/to/your/wiki/index.wiki, no matter in which subdirectory you
 are currently in.
 
-Links to directories (ending with a "/") are also supported: >
+Links to subdirectories inside the wiki directory are also supported. They
+end with a "/": >
   [[a subdirectory/|Other files]]
 Use |g:vimwiki_dir_link| to control the behavior when opening directories.
 
@@ -798,7 +799,7 @@ which opens up a popup menu with all the wiki files starting with "ind".
 Raw URLs~
 
 Raw URLs are also supported: >
-  http://code.google.com/p/vimwiki
+  https://github.com/vimwiki/vimwiki.git
   mailto:habamax@gmail.com
   ftp://vim.org
 
@@ -1180,6 +1181,7 @@ using absolute or relative paths with extension: >
   [[file:~/a/b/c/music.mp3]]
   [[file:../assets/data.csv|data (CSV)]]
   [[local:C:/Users/somebody/d/e/f/music.mp3]]
+  [[file:/home/user/documents/|Link to a directory]]
 
 In Vim, "file:" and "local:" behave the same, i.e. you can use them with both
 relative and absolute links. When converted to HTML, however, "file:" links
@@ -2702,7 +2704,7 @@ Your help in making vimwiki better is really appreciated!
 Any help, whether it is a spelling correction or a code snippet to patch --
 everything is welcomed.
 
-Issues can be filed at http://code.google.com/p/vimwiki/issues .
+Issues can be filed at https://github.com/vimwiki/vimwiki/issues/ .
 
 
 ==============================================================================
@@ -2711,9 +2713,11 @@ Issues can be filed at http://code.google.com/p/vimwiki/issues .
     - Maxim Kim <habamax@gmail.com> as original author.
     - Stuart Andrews
     - Tomas Pospichal
-    - See the http://code.google.com/p/vimwiki/people/list for the others.
+    - See the following sites for more: 
+        https://github.com/vimwiki/vimwiki/graphs/contributors
+        http://code.google.com/p/vimwiki/people/list
 
-Web: http://code.google.com/p/vimwiki/
+Web: https://github.com/vimwiki/vimwiki.git
 Mail-List: https://groups.google.com/forum/#!forum/vimwiki
 Vim plugins: http://www.vim.org/scripts/script.php?script_id=2226
 
@@ -2753,6 +2757,7 @@ Vim plugins: http://www.vim.org/scripts/script.php?script_id=2226
     * Always jump to previous link on <S-Tab>, not to beginning of link
     * Issue #27: Fix <CR> on a visual selection sometimes not working
     * Various small fixes
+    * Corrected website links in documentation
 
 2.1~
 
