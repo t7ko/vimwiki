@@ -5,8 +5,8 @@
 let s:TAGS_METADATA_FILE_NAME = '.tags'
 
 " Tags metadata in-memory format:
-" metadata := [ entry, ... ]
-" entry := { 'tagname':..., 'pagename':..., 'lineno':..., 'link':... }
+" metadata := { 'pagename': [entries, ...] }
+" entry := { 'tagname':..., 'lineno':..., 'link':... }
 
 " Tags metadata in-file format:
 "
@@ -23,37 +23,45 @@ let s:TAGS_METADATA_FILE_NAME = '.tags'
 "   Update tags metadata.
 "   a:full_rebuild == 1: re-scan entire wiki
 "   a:full_rebuild == 0: only re-scan current page
-function! vimwiki#tags#update_tags(full_rebuild) "{{{
+"   a:all_files == '':   only if the file is newer than .tags
+function! vimwiki#tags#update_tags(full_rebuild, all_files) "{{{
+  let all_files = a:all_files != ''
   if !a:full_rebuild
     " Updating for one page (current)
     let page_name = VimwikiGet('subdir') . expand('%:t:r')
     " Collect tags in current file
     let tags = s:scan_tags(getline(1, '$'), page_name)
     " Load metadata file
-    let metadata = vimwiki#tags#load_tags_metadata()
+    let metadata = s:load_tags_metadata()
     " Drop old tags
     let metadata = s:remove_page_from_tags(metadata, page_name)
     " Merge in the new ones
-    let metadata = s:merge_tags(metadata, tags)
+    let metadata = s:merge_tags(metadata, page_name, tags)
     " Save
     call s:write_tags_metadata(metadata)
   else " full rebuild
     let files = vimwiki#base#find_files(g:vimwiki_current_idx, 0)
-    let metadata = []
+    let tags_file_last_modification =
+          \ getftime(vimwiki#tags#metadata_file_path())
+    let metadata = s:load_tags_metadata()
     for file in files
-      let page_name = fnamemodify(file, ':t:r')
-      let tags = s:scan_tags(readfile(file), page_name)
-      let metadata = s:merge_tags(metadata, tags)
+      if all_files || getftime(file) >= tags_file_last_modification
+        let page_name = fnamemodify(file, ':t:r')
+        let tags = s:scan_tags(readfile(file), page_name)
+        let metadata = s:remove_page_from_tags(metadata, page_name)
+        let metadata = s:merge_tags(metadata, page_name, tags)
+      endif
     endfor
     call s:write_tags_metadata(metadata)
   endif
 endfunction " }}}
 
 " s:scan_tags
-"   Scans the list of text lines (argument) and produces tags metadata.
+"   Scans the list of text lines (argument) and produces tags metadata as a
+"   list of tag entries.
 function! s:scan_tags(lines, page_name) "{{{
 
-  let metadata = []
+  let entries = []
   let page_name = a:page_name
 
   " Code wireframe to scan for headers -- borrowed from
@@ -110,38 +118,37 @@ function! s:scan_tags(lines, page_name) "{{{
         " Create metadata entry
         let entry = {}
         let entry.tagname  = tag
-        let entry.pagename = page_name
         let entry.lineno   = line_nr
-        if line_nr <= (header_line_nr + PROXIMITY_LINES_NR)
-          let entry.link   = page_name . '#' . current_complete_anchor
-        elseif header_line_nr < 0
-          " Tag appeared before the first header
+        if line_nr <= PROXIMITY_LINES_NR && header_line_nr < 0
+          " Tag appeared at the top of the file
           let entry.link   = page_name
+        elseif line_nr <= (header_line_nr + PROXIMITY_LINES_NR)
+          let entry.link   = page_name . '#' . current_complete_anchor
         else
           let entry.link   = page_name . '#' . tag
         endif
-        call add(metadata, entry)
+        call add(entries, entry)
       endfor
     endwhile
 
   endfor " loop over lines
-  return metadata
+  return entries
 endfunction " }}}
 
-" s:metadata_file_path
+" vimwiki#tags#metadata_file_path
 "   Returns tags metadata file path
-function! s:metadata_file_path() abort "{{{
+function! vimwiki#tags#metadata_file_path() abort "{{{
   return fnamemodify(VimwikiGet('path') . '/' . s:TAGS_METADATA_FILE_NAME, ':p')
 endfunction " }}}
 
-" vimwiki#tags#load_tags_metadata
+" s:load_tags_metadata
 "   Loads tags metadata from file, returns a dictionary
-function! vimwiki#tags#load_tags_metadata() abort "{{{
-  let metadata_path = s:metadata_file_path()
+function! s:load_tags_metadata() abort "{{{
+  let metadata_path = vimwiki#tags#metadata_file_path()
   if !filereadable(metadata_path)
-    return []
+    return {}
   endif
-  let metadata = []
+  let metadata = {}
   for line in readfile(metadata_path)
     if line =~ '^!_TAG_FILE_'
       continue
@@ -171,12 +178,16 @@ function! vimwiki#tags#load_tags_metadata() abort "{{{
     if len(vw_fields) != 2
       throw 'VimwikiTags5: Metadata file corrupted'
     endif
+    let pagename = vw_fields[0]
     let entry = {}
     let entry.tagname  = std_fields[0]
-    let entry.pagename = vw_fields[0]
     let entry.lineno   = std_fields[2]
     let entry.link     = vw_fields[1]
-    call add(metadata, entry)
+    if has_key(metadata, pagename)
+      call add(metadata[pagename], entry)
+    else
+      let metadata[pagename] = [entry]
+    endif
   endfor
   return metadata
 endfunction " }}}
@@ -185,47 +196,57 @@ endfunction " }}}
 "   Removes all entries for given page from metadata in-place.  Returns updated
 "   metadata (just in case).
 function! s:remove_page_from_tags(metadata, page_name) "{{{
-  let metadata = filter(a:metadata,
-        \ "v:val.pagename != '" . substitute(a:page_name, "'", "''", '') . "'")
-  return metadata
+  if has_key(a:metadata, a:page_name)
+    call remove(a:metadata, a:page_name)
+    return a:metadata
+  else
+    return a:metadata
+  endif
 endfunction " }}}
 
 " s:merge_tags
-"   Merges two tags metadata objects into (new) one.
-function! s:merge_tags(metadata1, metadata2) "{{{
-  return a:metadata1 + a:metadata2
+"   Merges metadata of one file into a:metadata
+function! s:merge_tags(metadata, pagename, file_metadata) "{{{
+  let metadata = a:metadata
+  let metadata[a:pagename] = a:file_metadata
+  return metadata
 endfunction " }}}
 
 " s:write_tags_metadata
 "   Saves metadata object into a file. Throws exceptions in case of problems.
 function! s:write_tags_metadata(metadata) "{{{
-  let metadata_path = s:metadata_file_path()
-  let entries = []
-  for entry in a:metadata
-    let entry_data = entry.pagename . "\t" . entry.link
-    let entry_data = substitute(entry_data, "\\", '\\\\', 'g')
-    let entry_data = substitute(entry_data, "\t", '\\t', 'g')
-    let entry_data = substitute(entry_data, "\r", '\\r', 'g')
-    let entry_data = substitute(entry_data, "\n", '\\n', 'g')
-    call add(entries,
-          \   entry.tagname  . "\t"
-          \ . entry.pagename . VimwikiGet('ext') . "\t"
-          \ . entry.lineno
-          \ . ';"'
-          \ . "\t" . "vimwiki:" . entry_data
-          \)
+  let metadata_path = vimwiki#tags#metadata_file_path()
+  let tags = []
+  for pagename in keys(a:metadata)
+    for entry in a:metadata[pagename]
+      let entry_data = pagename . "\t" . entry.link
+      let entry_data = substitute(entry_data, "\\", '\\\\', 'g')
+      let entry_data = substitute(entry_data, "\t", '\\t', 'g')
+      let entry_data = substitute(entry_data, "\r", '\\r', 'g')
+      let entry_data = substitute(entry_data, "\n", '\\n', 'g')
+      call add(tags,
+            \   entry.tagname  . "\t"
+            \ . pagename . VimwikiGet('ext') . "\t"
+            \ . entry.lineno
+            \ . ';"'
+            \ . "\t" . "vimwiki:" . entry_data
+            \)
+    endfor
   endfor
-  call sort(entries)
-  call insert(entries, "!_TAG_FILE_SORTED\t1\t{anything}")
-  call writefile(entries, metadata_path)
+  call sort(tags)
+  call insert(tags, "!_TAG_FILE_SORTED\t1\t")
+  call writefile(tags, metadata_path)
 endfunction " }}}
 
 " vimwiki#tags#get_tags
-"   Returns list of unique tags found in metadata
-function! vimwiki#tags#get_tags(metadata) "{{{
+"   Returns list of unique tags found in the .tags file
+function! vimwiki#tags#get_tags() "{{{
+  let metadata = s:load_tags_metadata()
   let tags = {}
-  for entry in a:metadata
-    let tags[entry.tagname] = 1
+  for entries in values(metadata)
+    for entry in entries
+      let tags[entry.tagname] = 1
+    endfor
   endfor
   return keys(tags)
 endfunction " }}}
@@ -238,27 +259,35 @@ function! vimwiki#tags#generate_tags(...) abort "{{{
   let need_all_tags = (a:0 == 0)
   let specific_tags = a:000
 
-  let metadata = vimwiki#tags#load_tags_metadata()
+  let metadata = s:load_tags_metadata()
 
   call append(line('$'), [
         \ '',
         \ substitute(g:vimwiki_rxH1_Template, '__Header__', 'Generated Tags', '') ])
 
-  call sort(metadata)
+  " make a dictionary { tag_name: [tag_links, ...] }
+  let tags_entries = {}
+  for entries in values(metadata)
+    for entry in entries
+      if has_key(tags_entries, entry.tagname)
+        call add(tags_entries[entry.tagname], entry.link)
+      else
+        let tags_entries[entry.tagname] = [entry.link]
+      endif
+    endfor
+  endfor
 
   let bullet = repeat(' ', vimwiki#lst#get_list_margin()).
         \ vimwiki#lst#default_symbol().' '
-  let current_tag = ''
-  for entry in metadata
-    if need_all_tags || index(specific_tags, entry.tagname) != -1
-      if entry.tagname != current_tag
-        let current_tag = entry.tagname
-        call append(line('$'), [
-              \ '',
-              \ substitute(g:vimwiki_rxH2_Template, '__Header__', entry.tagname, ''),
-              \ '' ])
-      endif
-      call append(line('$'), bullet . '[[' . entry.link . ']]')
+  for tagname in sort(keys(tags_entries))
+    if need_all_tags || index(specific_tags, tagname) != -1
+      call append(line('$'), [
+            \ '',
+            \ substitute(g:vimwiki_rxH2_Template, '__Header__', tagname, ''),
+            \ '' ])
+      for taglink in tags_entries[tagname]
+        call append(line('$'), bullet . '[[' . taglink . ']]')
+      endfor
     endif
   endfor
 endfunction " }}}
@@ -267,8 +296,7 @@ endfunction " }}}
 function! vimwiki#tags#complete_tags(ArgLead, CmdLine, CursorPos) abort " {{{
   " We can safely ignore args if we use -custom=complete option, Vim engine
   " will do the job of filtering.
-  let metadata = vimwiki#tags#load_tags_metadata()
-  let taglist = vimwiki#tags#get_tags(metadata)
+  let taglist = vimwiki#tags#get_tags()
   return join(taglist, "\n")
 endfunction " }}}
 

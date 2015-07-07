@@ -31,7 +31,7 @@ execute 'setlocal suffixesadd='.VimwikiGet('ext')
 setlocal isfname-=[,]
 " gf}}}
 
-setlocal tags+=.tags
+exe "setlocal tags+=" . vimwiki#tags#metadata_file_path()
 
 " MISC }}}
 
@@ -67,8 +67,7 @@ function! Complete_wikifiles(findstart, base)
       return []
     elseif s:line_context == ':'
       " Tags completion
-      let metadata = vimwiki#tags#load_tags_metadata()
-      let tags = vimwiki#tags#get_tags(metadata)
+      let tags = vimwiki#tags#get_tags()
       if a:base != ''
         call filter(tags,
             \ "v:val[:" . (len(a:base)-1) . "] == '" . substitute(a:base, "'", "''", '') . "'" )
@@ -316,7 +315,8 @@ command! -buffer VimwikiDiaryNextDay call vimwiki#diary#goto_next_day()
 command! -buffer VimwikiDiaryPrevDay call vimwiki#diary#goto_prev_day()
 
 " tags commands
-command! -buffer VimwikiRebuildTags call vimwiki#tags#update_tags(1)
+command! -buffer -bang
+      \ VimwikiRebuildTags call vimwiki#tags#update_tags(1, '<bang>')
 command! -buffer -nargs=* -complete=custom,vimwiki#tags#complete_tags
       \ VimwikiSearchTags VimwikiSearch /:<args>:/
 command! -buffer -nargs=* -complete=custom,vimwiki#tags#complete_tags
@@ -658,7 +658,7 @@ endif
 if VimwikiGet('auto_tags')
   " Automatically update tags metadata on page write.
   augroup vimwiki
-    au BufWritePost <buffer> call vimwiki#tags#update_tags(0)
+    au BufWritePost <buffer> call vimwiki#tags#update_tags(0, '')
   augroup END
 endif
 " AUTOCOMMANDS }}}

@@ -707,9 +707,9 @@ function! s:jump_to_anchor(anchor) "{{{
     let anchor_tag = substitute(g:vimwiki_{VimwikiGet('syntax')}_tag_match,
           \ '__Tag__', "\\='".segment."'", '')
 
-    if         !search(anchor_header, 'Wc')
+    if         !search(anchor_tag, 'Wc')
+          \ && !search(anchor_header, 'Wc')
           \ && !search(anchor_bold, 'Wc')
-          \ && !search(anchor_tag, 'Wc')
       call setpos('.', oldpos)
       break
     endif
@@ -1179,6 +1179,9 @@ function! vimwiki#base#go_back_link() "{{{
     let prev_word = b:vimwiki_prev_link
     execute ":e ".substitute(prev_word[0], '\s', '\\\0', 'g')
     call setpos('.', prev_word[1])
+  else
+    " maybe we came here by jumping to a tag -> pop from the tag stack
+    silent! pop!
   endif
 endfunction " }}}
 
