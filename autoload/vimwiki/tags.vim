@@ -62,7 +62,6 @@ endfunction " }}}
 function! s:scan_tags(lines, page_name) "{{{
 
   let entries = []
-  let page_name = a:page_name
 
   " Code wireframe to scan for headers -- borrowed from
   " vimwiki#base#get_anchors(), with minor modifications.
@@ -73,7 +72,7 @@ function! s:scan_tags(lines, page_name) "{{{
   let anchor_level = ['', '', '', '', '', '', '']
   let current_complete_anchor = ''
 
-  let PROXIMITY_LINES_NR = 5
+  let PROXIMITY_LINES_NR = 2
   let header_line_nr = - (2 * PROXIMITY_LINES_NR)
 
   for line_nr in range(1, len(a:lines))
@@ -121,11 +120,13 @@ function! s:scan_tags(lines, page_name) "{{{
         let entry.lineno   = line_nr
         if line_nr <= PROXIMITY_LINES_NR && header_line_nr < 0
           " Tag appeared at the top of the file
-          let entry.link   = page_name
+          let entry.link   = a:page_name
         elseif line_nr <= (header_line_nr + PROXIMITY_LINES_NR)
-          let entry.link   = page_name . '#' . current_complete_anchor
+          " Tag appeared right below a header
+          let entry.link   = a:page_name . '#' . current_complete_anchor
         else
-          let entry.link   = page_name . '#' . tag
+          " Tag stands on its own
+          let entry.link   = a:page_name . '#' . tag
         endif
         call add(entries, entry)
       endfor
@@ -261,10 +262,6 @@ function! vimwiki#tags#generate_tags(...) abort "{{{
 
   let metadata = s:load_tags_metadata()
 
-  call append(line('$'), [
-        \ '',
-        \ substitute(g:vimwiki_rxH1_Template, '__Header__', 'Generated Tags', '') ])
-
   " make a dictionary { tag_name: [tag_links, ...] }
   let tags_entries = {}
   for entries in values(metadata)
@@ -277,19 +274,28 @@ function! vimwiki#tags#generate_tags(...) abort "{{{
     endfor
   endfor
 
+  let lines = []
   let bullet = repeat(' ', vimwiki#lst#get_list_margin()).
         \ vimwiki#lst#default_symbol().' '
   for tagname in sort(keys(tags_entries))
     if need_all_tags || index(specific_tags, tagname) != -1
-      call append(line('$'), [
+      call extend(lines, [
             \ '',
             \ substitute(g:vimwiki_rxH2_Template, '__Header__', tagname, ''),
             \ '' ])
       for taglink in tags_entries[tagname]
-        call append(line('$'), bullet . '[[' . taglink . ']]')
+        call add(lines, bullet .
+              \ substitute(g:vimwiki_WikiLinkTemplate1, '__LinkUrl__', taglink, ''))
       endfor
     endif
   endfor
+
+  let links_rx = '\m\%(^\s*$\)\|\%('.g:vimwiki_rxH2.'\)\|\%(^\s*'
+        \ .vimwiki#u#escape(vimwiki#lst#default_symbol()).' '
+        \ .g:vimwiki_rxWikiLink.'$\)'
+
+  call vimwiki#base#update_listing_in_buffer(lines, 'Generated Tags', links_rx,
+        \ line('$')+1, 1)
 endfunction " }}}
 
 " vimwiki#tags#complete_tags
