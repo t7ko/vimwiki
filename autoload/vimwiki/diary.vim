@@ -83,7 +83,7 @@ fun! s:read_captions(files) "{{{
   return result
 endfun "}}}
 
-fun! s:get_diary_links(...) "{{{
+fun! s:get_diary_links() "{{{
   let rx = '^\d\{4}-\d\d-\d\d'
   let s_files = glob(VimwikiGet('path').VimwikiGet('diary_rel_path').'*'.VimwikiGet('ext'))
   let files = split(s_files, '\n')
@@ -92,9 +92,6 @@ fun! s:get_diary_links(...) "{{{
   " remove backup files (.wiki~)
   call filter(files, 'v:val !~# ''.*\~$''')
 
-  if a:0
-    call add(files, a:1)
-  endif
   let links_with_captions = s:read_captions(files)
 
   return links_with_captions
@@ -129,14 +126,10 @@ function! s:sort(lst) "{{{
   endif
 endfunction "}}}
 
-function! s:format_diary(...) "{{{
+function! s:format_diary() "{{{
   let result = []
 
-  if a:0
-    let g_files = s:group_links(s:get_diary_links(a:1))
-  else
-    let g_files = s:group_links(s:get_diary_links())
-  endif
+  let g_files = s:group_links(s:get_diary_links())
 
   for year in s:sort(keys(g_files))
     call add(result, '')
@@ -168,7 +161,7 @@ endfunction "}}}
 
 function! vimwiki#diary#make_note(wnum, ...) "{{{
   if a:wnum > len(g:vimwiki_list)
-    echom "vimwiki: Wiki ".a:wnum." is not registered in g:vimwiki_list!"
+    echomsg 'Vimwiki Error: Wiki '.a:wnum.' is not registered in g:vimwiki_list!'
     return
   endif
 
@@ -198,7 +191,7 @@ endfunction "}}}
 
 function! vimwiki#diary#goto_diary_index(wnum) "{{{
   if a:wnum > len(g:vimwiki_list)
-    echom "vimwiki: Wiki ".a:wnum." is not registered in g:vimwiki_list!"
+    echomsg 'Vimwiki Error: Wiki '.a:wnum.' is not registered in g:vimwiki_list!'
     return
   endif
 
@@ -261,7 +254,7 @@ function! vimwiki#diary#generate_diary_section() "{{{
     call vimwiki#base#update_listing_in_buffer(s:format_diary(),
           \ VimwikiGet('diary_header'), content_rx, line('$')+1, 1)
   else
-    echom "vimwiki: You can generate diary links only in a diary index page!"
+    echomsg 'Vimwiki Error: You can generate diary links only in a diary index page!'
   endif
 endfunction "}}}
 
