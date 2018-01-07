@@ -6,6 +6,13 @@
 
 " MISC helper functions {{{
 
+" s:safesubstitute
+function! s:safesubstitute(text, search, replace, mode) "{{{
+  " Substitute regexp but do not interpret replace
+  let escaped = escape(a:replace, '\&')
+  return substitute(a:text, a:search, escaped, a:mode)
+endfunction " }}}
+
 " vimwiki#markdown_base#reset_mkd_refs
 function! vimwiki#markdown_base#reset_mkd_refs() "{{{
   call VimwikiClear('markdown_refs')
@@ -70,59 +77,6 @@ endfunction " }}}
 
 " WIKI link following functions {{{
 
-" vimwiki#markdown_base#follow_link
-function! vimwiki#markdown_base#follow_link(split, ...) "{{{ Parse link at cursor and pass 
-  " to VimwikiLinkHandler, or failing that, the default open_link handler
-  " echom "markdown_base#follow_link"
-
-  if 0
-    " Syntax-specific links
-    " XXX: @Stuart: do we still need it?
-    " XXX: @Maxim: most likely!  I am still working on a seemless way to
-    " integrate regexp's without complicating syntax/vimwiki.vim
-  else
-    if a:split ==# "split"
-      let cmd = ":split "
-    elseif a:split ==# "vsplit"
-      let cmd = ":vsplit "
-    elseif a:split ==# "tabnew"
-      let cmd = ":tabnew "
-    else
-      let cmd = ":e "
-    endif
-
-    " try WikiLink
-    let lnk = matchstr(vimwiki#base#matchstr_at_cursor(g:vimwiki_rxWikiLink),
-          \ g:vimwiki_rxWikiLinkMatchUrl)
-    " try WikiIncl
-    if lnk == ""
-      let lnk = matchstr(vimwiki#base#matchstr_at_cursor(g:vimwiki_rxWikiIncl),
-          \ g:vimwiki_rxWikiInclMatchUrl)
-    endif
-    " try Weblink
-    if lnk == ""
-      let lnk = matchstr(vimwiki#base#matchstr_at_cursor(g:vimwiki_rxWeblink),
-            \ g:vimwiki_rxWeblinkMatchUrl)
-    endif
-
-    if lnk != ""
-      if !VimwikiLinkHandler(lnk)
-        if !vimwiki#markdown_base#open_reflink(lnk)
-          call vimwiki#base#open_link(cmd, lnk)
-        endif
-      endif
-      return
-    endif
-
-    if a:0 > 0
-      execute "normal! ".a:1
-    else		
-      call vimwiki#base#normalize_link(0)
-    endif
-  endif
-
-endfunction " }}}
-
 " LINK functions {{{
 
 " s:normalize_link_syntax_n
@@ -133,9 +87,6 @@ function! s:normalize_link_syntax_n() " {{{
   let lnk = vimwiki#base#matchstr_at_cursor(g:vimwiki_rxWikiIncl)
   if !empty(lnk)
     " NO-OP !!
-    if g:vimwiki_debug > 1
-      echomsg "WikiIncl: ".lnk." Sub: ".lnk
-    endif
     return
   endif
 
@@ -146,9 +97,6 @@ function! s:normalize_link_syntax_n() " {{{
           \ g:vimwiki_rxWikiLinkMatchUrl, g:vimwiki_rxWikiLinkMatchDescr,
           \ g:vimwiki_WikiLink1Template2)
     call vimwiki#base#replacestr_at_cursor(g:vimwiki_rxWikiLink0, sub)
-    if g:vimwiki_debug > 1
-      echomsg "WikiLink: ".lnk." Sub: ".sub
-    endif
     return
   endif
   
@@ -159,9 +107,6 @@ function! s:normalize_link_syntax_n() " {{{
           \ g:vimwiki_rxWikiLinkMatchUrl, g:vimwiki_rxWikiLinkMatchDescr,
           \ g:vimwiki_WikiLinkTemplate2)
     call vimwiki#base#replacestr_at_cursor(g:vimwiki_rxWikiLink1, sub)
-    if g:vimwiki_debug > 1
-      echomsg "WikiLink: ".lnk." Sub: ".sub
-    endif
     return
   endif
   
@@ -172,9 +117,6 @@ function! s:normalize_link_syntax_n() " {{{
           \ g:vimwiki_rxWeblinkMatchUrl, g:vimwiki_rxWeblinkMatchDescr,
           \ g:vimwiki_Weblink1Template)
     call vimwiki#base#replacestr_at_cursor(g:vimwiki_rxWeblink, sub)
-    if g:vimwiki_debug > 1
-      echomsg "WebLink: ".lnk." Sub: ".sub
-    endif
     return
   endif
 
@@ -185,11 +127,8 @@ function! s:normalize_link_syntax_n() " {{{
   if !empty(lnk)
     let sub = vimwiki#base#normalize_link_helper(lnk,
           \ g:vimwiki_rxWord, '',
-          \ g:vimwiki_WikiLinkTemplate1)
+          \ g:vimwiki_Weblink1Template)
     call vimwiki#base#replacestr_at_cursor('\V'.lnk, sub)
-    if g:vimwiki_debug > 1
-      echomsg "Word: ".lnk." Sub: ".sub
-    endif
     return
   endif
 
@@ -207,12 +146,13 @@ function! s:normalize_link_syntax_v() " {{{
   try
     norm! gvy
     let visual_selection = @"
-    let visual_selection = substitute(g:vimwiki_WikiLinkTemplate1, '__LinkUrl__', '\='."'".visual_selection."'", '')
+    let link = s:safesubstitute(g:vimwiki_Weblink1Template, '__LinkUrl__', visual_selection, '')
+    let link = s:safesubstitute(link, '__LinkDescription__', visual_selection, '')
 
-    call setreg('"', visual_selection, 'v')
+    call setreg('"', link, 'v')
 
     " paste result
-    norm! `>pgvd
+    norm! `>""pgvd
 
   finally
     call setreg('"', rv, rt)

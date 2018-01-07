@@ -80,9 +80,10 @@ function! s:create_default_CSS(path) " {{{
     if default_css != ''
       let lines = readfile(default_css)
       call writefile(lines, css_full_name)
-      echomsg "Default style.css has been created."
+      return 1
     endif
   endif
+  return 0
 endfunction "}}}
 
 function! s:template_full_name(name) "{{{
@@ -112,7 +113,7 @@ function! s:get_html_template(template) "{{{
       let lines = readfile(template_name)
       return lines
     catch /E484/
-      echomsg 'vimwiki: html template '.template_name.
+      echomsg 'Vimwiki: HTML template '.template_name.
             \ ' does not exist!'
     endtry
   endif
@@ -171,7 +172,7 @@ function! s:delete_html_files(path) "{{{
     try
       call delete(fname)
     catch
-      echomsg 'vimwiki: Cannot delete '.fname
+      echomsg 'Vimwiki Error: Cannot delete '.fname
     endtry
   endfor
 endfunction "}}}
@@ -206,6 +207,19 @@ function! s:save_vimwiki_buffer() "{{{
   if &filetype ==? 'vimwiki' && filewritable(expand('%'))
     silent update
   endif
+endfunction "}}}
+
+" get date.
+function! s:process_date(placeholders, default_date) "{{{
+  if !empty(a:placeholders)
+    for [placeholder, row, idx] in a:placeholders
+      let [type, param] = placeholder
+      if type ==# 'date' && !empty(param)
+        return param
+      endif
+    endfor
+  endif
+  return a:default_date
 endfunction "}}}
 
 " get title.
@@ -396,11 +410,6 @@ function! s:tag_wikiincl(value) "{{{
 
     let link_infos = vimwiki#base#resolve_link(url_0)
 
-    " TODO: migrate non-essential debugging messages into g:VimwikiLog
-    if g:vimwiki_debug > 1
-      echom string(link_infos)
-    endif
-
     if link_infos.scheme =~# '\mlocal\|wiki\d\+\|diary'
       let url = vimwiki#path#relpath(fnamemodify(s:current_html_file, ':h'),
             \ link_infos.filename)
@@ -453,12 +462,6 @@ function! s:tag_wikilink(value) "{{{
       endif
     else " other schemes, like http, are left untouched
       let html_link = link_infos.filename
-    endif
-
-    " generate html output
-    " TODO: migrate non-essential debugging messages into g:VimwikiLog
-    if g:vimwiki_debug > 1
-      echom string(link_infos)
     endif
 
     if link_infos.anchor != ''
@@ -870,7 +873,13 @@ function! s:process_tag_list(line, lists) "{{{
     let chk = matchlist(a:line, a:rx_list)
     if !empty(chk) && len(chk[1]) > 0
       let completion = index(g:vimwiki_listsyms_list, chk[1])
-      if completion >= 0 && completion <=4
+      let n = len(g:vimwiki_listsyms_list)
+      if completion == 0
+        let st_tag = '<li class="done0">'
+      elseif completion == -1 && chk[1] == g:vimwiki_listsym_rejected
+        let st_tag = '<li class="rejected">'
+      elseif completion > 0 && completion < n
+        let completion = float2nr(round(completion / (n-1.0) * 3.0 + 0.5 ))
         let st_tag = '<li class="done'.completion.'">'
       endif
     endif
@@ -989,7 +998,11 @@ function! s:process_tag_para(line, para) "{{{
       let para = 1
     endif
     let processed = 1
-    call add(lines, a:line)
+    if g:vimwiki_text_ignore_newline == 1
+      call add(lines, a:line)
+    else
+      call add(lines, a:line."<br />")
+    endif
   elseif para && a:line =~# '^\s*$'
     call add(lines, "</p>")
     let para = 0
@@ -1056,6 +1069,8 @@ function! s:process_tag_h(line, id) "{{{
     else
       let h_part .= '>'
     endif
+
+    let h_text = s:process_inline_tags(h_text, a:id)
 
     let line = h_part.h_text.'</h'.h_level.'></div>'
 
@@ -1190,7 +1205,7 @@ function! s:parse_line(line, state) " {{{
 
   " nohtml -- placeholder
   if !processed
-    if line =~# '^\s*%nohtml'
+    if line =~# '\m^\s*%nohtml\s*$'
       let processed = 1
       let state.placeholder = ['nohtml']
     endif
@@ -1198,18 +1213,27 @@ function! s:parse_line(line, state) " {{{
 
   " title -- placeholder
   if !processed
-    if line =~# '^\s*%title'
+    if line =~# '\m^\s*%title\%(\s.*\)\?$'
       let processed = 1
-      let param = matchstr(line, '^\s*%title\s\zs.*')
+      let param = matchstr(line, '\m^\s*%title\s\+\zs.*')
       let state.placeholder = ['title', param]
+    endif
+  endif
+
+  " date -- placeholder
+  if !processed
+    if line =~# '\m^\s*%date\%(\s.*\)\?$'
+      let processed = 1
+      let param = matchstr(line, '\m^\s*%date\s\+\zs.*')
+      let state.placeholder = ['date', param]
     endif
   endif
 
   " html template -- placeholder "{{{
   if !processed
-    if line =~# '^\s*%template'
+    if line =~# '\m^\s*%template\%(\s.*\)\?$'
       let processed = 1
-      let param = matchstr(line, '^\s*%template\s\zs.*')
+      let param = matchstr(line, '\m^\s*%template\s\+\zs.*')
       let state.placeholder = ['template', param]
     endif
   endif
@@ -1262,8 +1286,6 @@ function! s:parse_line(line, state) " {{{
       let state.math = s:close_tag_math(state.math, res_lines)
       let state.quote = s:close_tag_quote(state.quote, res_lines)
       let state.para = s:close_tag_para(state.para, res_lines)
-
-      let line = s:process_inline_tags(line, state.header_ids)
 
       call add(res_lines, line)
     endif
@@ -1371,16 +1393,14 @@ function! vimwiki#html#CustomWiki2HTML(path, wikifile, force) "{{{
       \ shellescape(a:path). ' '.
       \ shellescape(a:wikifile). ' '.
       \ shellescape(s:default_CSS_full_name(a:path)). ' '.
-      \ (len(VimwikiGet('template_path'))    > 1 ? shellescape(expand(VimwikiGet('template_path'))) : '-'). ' '.
-      \ (len(VimwikiGet('template_default')) > 0 ? VimwikiGet('template_default')                   : '-'). ' '.
-      \ (len(VimwikiGet('template_ext'))     > 0 ? VimwikiGet('template_ext')                       : '-'). ' '.
-      \ (len(VimwikiGet('subdir'))           > 0 ? shellescape(s:root_path(VimwikiGet('subdir')))   : '-'))
+      \ (len(VimwikiGet('template_path'))         > 1 ? shellescape(expand(VimwikiGet('template_path'))) : '-'). ' '.
+      \ (len(VimwikiGet('template_default'))      > 0 ? VimwikiGet('template_default')                   : '-'). ' '.
+      \ (len(VimwikiGet('template_ext'))          > 0 ? VimwikiGet('template_ext')                       : '-'). ' '.
+      \ (len(VimwikiGet('subdir'))                > 0 ? shellescape(s:root_path(VimwikiGet('subdir')))   : '-'). ' '.
+      \ (len(VimwikiGet('custom_wiki2html_args')) > 0 ? VimwikiGet('custom_wiki2html_args')              : '-'))
 endfunction " }}}
 
-function! vimwiki#html#Wiki2HTML(path_html, wikifile) "{{{
-
-  let starttime = reltime()  " start the clock
-
+function! s:convert_file(path_html, wikifile) "{{{
   let done = 0
 
   let wikifile = fnamemodify(a:wikifile, ":p")
@@ -1402,10 +1422,6 @@ function! vimwiki#html#Wiki2HTML(path_html, wikifile) "{{{
   if s:syntax_supported() && done == 0
     let lsource = readfile(wikifile)
     let ldest = []
-
-    "if g:vimwiki_debug
-    "  echo 'Generating HTML ... '
-    "endif
 
     call vimwiki#path#mkdir(path_html)
 
@@ -1474,13 +1490,13 @@ function! vimwiki#html#Wiki2HTML(path_html, wikifile) "{{{
 
     if nohtml
       echon "\r"."%nohtml placeholder found"
-      return
+      return ''
     endif
 
     call s:remove_blank_lines(ldest)
 
-    "" process end of file
-    "" close opened tags if any
+    " process end of file
+    " close opened tags if any
     let lines = []
     call s:close_tag_quote(state.quote, lines)
     call s:close_tag_para(state.para, lines)
@@ -1492,11 +1508,13 @@ function! vimwiki#html#Wiki2HTML(path_html, wikifile) "{{{
     call extend(ldest, lines)
 
     let title = s:process_title(placeholders, fnamemodify(a:wikifile, ":t:r"))
+    let date = s:process_date(placeholders, strftime('%Y-%m-%d'))
 
     let html_lines = s:get_html_template(template_name)
 
     " processing template variables (refactor to a function)
     call map(html_lines, 'substitute(v:val, "%title%", "'. title .'", "g")')
+    call map(html_lines, 'substitute(v:val, "%date%", "'. date .'", "g")')
     call map(html_lines, 'substitute(v:val, "%root_path%", "'.
           \ s:root_path(VimwikiGet('subdir')) .'", "g")')
 
@@ -1511,36 +1529,35 @@ function! vimwiki#html#Wiki2HTML(path_html, wikifile) "{{{
     call map(html_lines, 'substitute(v:val, "%encoding%", "'. enc .'", "g")')
 
     let html_lines = s:html_insert_contents(html_lines, ldest) " %contents%
-    
-    "" make html file.
+
     call writefile(html_lines, path_html.htmlfile)
     let done = 1
 
   endif
 
   if done == 0
-    echomsg 'vimwiki: conversion to HTML is not supported for this syntax!!!'
-    return
+    echomsg 'Vimwiki Error: Conversion to HTML is not supported for this syntax'
+    return ''
   endif
-
-  " measure the elapsed time 
-  let time1 = vimwiki#u#time(starttime)  "XXX
-  call VimwikiLog_extend('html',[htmlfile,time1])
-  "if g:vimwiki_debug
-  "  echon "\r".htmlfile.' written (time: '.time1.'s)'
-  "endif
 
   return path_html.htmlfile
 endfunction "}}}
 
+function! vimwiki#html#Wiki2HTML(path_html, wikifile) "{{{
+  let result = s:convert_file(a:path_html, a:wikifile)
+  if result != ''
+    call s:create_default_CSS(a:path_html)
+  endif
+  return result
+endfunction "}}}
 
 function! vimwiki#html#WikiAll2HTML(path_html) "{{{
   if !s:syntax_supported() && !s:use_custom_wiki2html()
-    echomsg 'vimwiki: conversion to HTML is not supported for this syntax!!!'
+    echomsg 'Vimwiki Error: Conversion to HTML is not supported for this syntax'
     return
   endif
 
-  echomsg 'Saving vimwiki files...'
+  echomsg 'Vimwiki: Saving Vimwiki files ...'
   let save_eventignore = &eventignore
   let &eventignore = "all"
   let cur_buf = bufname('%')
@@ -1551,10 +1568,10 @@ function! vimwiki#html#WikiAll2HTML(path_html) "{{{
   let path_html = expand(a:path_html)
   call vimwiki#path#mkdir(path_html)
 
-  echomsg 'Deleting non-wiki html files...'
+  echomsg 'Vimwiki: Deleting non-wiki html files ...'
   call s:delete_html_files(path_html)
 
-  echomsg 'Converting wiki to html files...'
+  echomsg 'Vimwiki: Converting wiki to html files ...'
   let setting_more = &more
   setlocal nomore
 
@@ -1572,20 +1589,23 @@ function! vimwiki#html#WikiAll2HTML(path_html) "{{{
     call VimwikiSet('invsubdir', vimwiki#base#invsubdir(subdir))
 
     if !s:is_html_uptodate(wikifile)
-      echomsg 'Processing '.wikifile
+      echomsg 'Vimwiki: Processing '.wikifile
 
-      call vimwiki#html#Wiki2HTML(path_html, wikifile)
+      call s:convert_file(path_html, wikifile)
     else
-      echomsg 'Skipping '.wikifile
+      echomsg 'Vimwiki: Skipping '.wikifile
     endif
   endfor
   " reset 'subdir' state variable
   call VimwikiSet('subdir', current_subdir)
   call VimwikiSet('invsubdir', current_invsubdir)
 
-  call s:create_default_CSS(path_html)
-  echomsg 'HTML exported to '.path_html
-  echomsg 'Done!'
+  let created = s:create_default_CSS(path_html)
+  if created
+    echomsg 'Vimwiki: Default style.css has been created'
+  endif
+  echomsg 'Vimwiki: HTML exported to '.path_html
+  echomsg 'Vimwiki: Done!'
 
   let &more = setting_more
 endfunction "}}}

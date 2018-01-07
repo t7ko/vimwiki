@@ -32,18 +32,13 @@ function! vimwiki#u#is_macos()
   return os == 'Darwin' || os == 'Mac'
 endfunction
 
-function! vimwiki#u#time(starttime) "{{{
-  " measure the elapsed time and cut away miliseconds and smaller
-  return matchstr(reltimestr(reltime(a:starttime)),'\d\+\(\.\d\d\)\=')
-endfunction "}}}
-
 function! vimwiki#u#count_first_sym(line) "{{{
   let first_sym = matchstr(a:line, '\S')
   return len(matchstr(a:line, first_sym.'\+'))
 endfunction "}}}
 
 function! vimwiki#u#escape(string) "{{{
-  return escape(a:string, '.*[]\^$')
+  return escape(a:string, '~.*[]\^$')
 endfunction "}}}
 
 " Load concrete Wiki syntax: sets regexes and templates for headers and links

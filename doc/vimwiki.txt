@@ -9,12 +9,12 @@
               |___|  |___| |_|   |_||__| |__||___| |___| |_||___|            ~
 
 
-                               Version: 2.2
+                               Version: 2.3
 
 ==============================================================================
 CONTENTS                                                             *vimwiki*
 
-    1. Intro                         |vimwiki|
+    1. Intro                         |vimwiki-intro|
     2. Prerequisites                 |vimwiki-prerequisites|
     3. Mappings                      |vimwiki-mappings|
         3.1. Global mappings         |vimwiki-global-mappings|
@@ -78,8 +78,8 @@ Feed it with the following example:
 
 Place your cursor on 'Tasks' and press Enter to create a link.  Once pressed,
 'Tasks' will become '[[Tasks]]' -- a Vimwiki link.  Press Enter again to
-open it.  Edit the file, save it, and then press Backspace to jump back to your
-index.
+open it.  Edit the file, save it, and then press Backspace to jump back to
+your index.
 
 A Vimwiki link can be constructed from more than one word.  Just visually
 select the words to be linked and press Enter.  Try it with 'Project
@@ -194,6 +194,24 @@ See also |:VimwikiMakeDiaryNote|
         :nmap <Leader>dt <Plug>VimwikiTabMakeDiaryNote
 <
 See also |:VimwikiTabMakeDiaryNote|
+
+
+[count]<Leader>w<Leader>y or <Plug>VimwikiMakeYesterdayDiaryNote
+        Open diary wiki-file for yesterday of the [count]'s wiki.
+
+        <Leader>w<Leader>y opens diary wiki-file for yesterday in the first
+        wiki from |g:vimwiki_list|.
+        1<Leader>w<Leader>y as above opens diary wiki-file for yesterday in
+        the first wiki from |g:vimwiki_list|.
+        2<Leader>w<Leader>y opens diary wiki-file for yesterday in the second
+        wiki from |g:vimwiki_list|.
+        3<Leader>w<Leader>y opens diary wiki-file for yesterday in the third
+        wiki from |g:vimwiki_list|.
+        etc.
+        To remap: >
+        :nmap <Leader>dy <Plug>VimwikiMakeYesterdayDiaryNote
+<
+See also |:VimwikiMakeYesterdayDiaryNote|
 
 
 ------------------------------------------------------------------------------
@@ -333,6 +351,16 @@ gL<Space>               Remove checkboxes from all sibling list items.
                         :map <Leader><Space> <Plug>VimwikiRemoveSingleCB
                         :map <Leader><Space> <Plug>VimwikiRemoveCBInList
 <
+                        *vimwiki_gln* *vimwiki_glp*
+gln                     Increase the "done" status of a list checkbox, i.e.
+                        from [ ] to [.] to [o] etc. See |vimwiki-todo-lists|.
+glp                     Decrease the "done" status.
+                        To remap: >
+                        :nmap <M-+> <Plug>VimwikiIncrementListItem
+                        :vmap <M-+> <Plug>VimwikiIncrementListItem
+                        :nmap <M--> <Plug>VimwikiDecrementListItem
+                        :vmap <M--> <Plug>VimwikiDecrementListItem
+
                         *vimwiki_gll* *vimwiki_gLl*
 gll                     Increase the level of a list item.
 gLl                     Increase the level of a list item and all child items.
@@ -345,7 +373,7 @@ glh                     Decrease the level of a list item.
 gLh                     Decrease the level of a list item and all child items.
                         To remap: >
                         :map << <Plug>VimwikiDecreaseLvlSingleItem
-                        :map >>> <Plug>VimwikiDecreaseLvlWholeItem
+                        :map <<< <Plug>VimwikiDecreaseLvlWholeItem
 <
                         *vimwiki_glr* *vimwiki_gLr*
 glr                     Renumber list items if the cursor is on a numbered
@@ -358,73 +386,82 @@ gLr                     Renumber list items in all numbered lists in the whole
                         :nmap <c-r> <Plug>VimwikiRenumberAllLists
 <
                         *vimwiki_glstar* *vimwiki_gLstar*
-gl*                     Make a list item out of normal line or change the symbol
-                        of the current item to *.
+gl*                     Make a list item out of a normal line or change the
+                        symbol of the current item to *.
 gL*                     Change the symbol of the current list to *.
                         To remap: >
                         noremap glo :VimwikiChangeSymbolTo *<CR>
                         noremap glO :VimwikiChangeSymbolInListTo *<CR>
 <
                         *vimwiki_gl#* *vimwiki_gL#*
-gl#                     Make a list item out of normal line or change the symbol
-                        of the current item to #.
+gl#                     Make a list item out of a normal line or change the
+                        symbol of the current item to #.
 gL#                     Change the symbol of the current list to #.
                         To remap: >
                         noremap glo :VimwikiChangeSymbolTo #<CR>
                         noremap glO :VimwikiChangeSymbolInListTo #<CR>
 <
                         *vimwiki_gl-* *vimwiki_gL-*
-gl-                     Make a list item out of normal line or change the symbol
-                        of the current item to -.
+gl-                     Make a list item out of a normal line or change the
+                        symbol of the current item to -.
 gL-                     Change the symbol of the current list to -.
                         To remap: >
                         noremap glo :VimwikiChangeSymbolTo -<CR>
                         noremap glO :VimwikiChangeSymbolInListTo -<CR>
 <
                         *vimwiki_gl1* *vimwiki_gL1*
-gl1                     Make a list item out of normal line or change the symbol
-                        of the current item to 1., the numbering is adjusted
-                        according to the surrounding list items.
+gl1                     Make a list item out of a normal line or change the
+                        symbol of the current item to 1., the numbering is
+                        adjusted according to the surrounding list items.
 gL1                     Change the symbol of the current list to 1. 2. 3. ...
                         To remap: >
                         noremap glo :VimwikiChangeSymbolTo 1.<CR>
                         noremap glO :VimwikiChangeSymbolInListTo 1.<CR>
 <
                         *vimwiki_gla* *vimwiki_gLa*
-gla                     Make a list item out of normal line or change the symbol
-                        of the current item to a), the numbering is adjusted
-                        according to the surrounding list items.
+gla                     Make a list item out of a normal line or change the
+                        symbol of the current item to a), the numbering is
+                        adjusted according to the surrounding list items.
 gLa                     Change the symbol of the current list to a) b) c) ...
                         To remap: >
                         noremap glo :VimwikiChangeSymbolTo a)<CR>
                         noremap glO :VimwikiChangeSymbolInListTo a)<CR>
 <
                         *vimwiki_glA* *vimwiki_gLA*
-glA                     Make a list item out of normal line or change the symbol
-                        of the current item to A), the numbering is adjusted
-                        according to the surrounding list items.
+glA                     Make a list item out of a normal line or change the
+                        symbol of the current item to A), the numbering is
+                        adjusted according to the surrounding list items.
 gLA                     Change the symbol of the current list to A) B) C) ...
                         To remap: >
                         noremap glo :VimwikiChangeSymbolTo A)<CR>
                         noremap glO :VimwikiChangeSymbolInListTo A)<CR>
 <
                         *vimwiki_gli* *vimwiki_gLi*
-gli                     Make a list item out of normal line or change the symbol
-                        of the current item to i), the numbering is adjusted
-                        according to the surrounding list items.
-gLi                     Change the symbol of the current list to i) ii) iii) ...
+gli                     Make a list item out of a normal line or change the
+                        symbol of the current item to i), the numbering is
+                        adjusted according to the surrounding list items.
+gLi                     Change the symbol of the current list to
+                        i) ii) iii) ...
                         To remap: >
                         noremap glo :VimwikiChangeSymbolTo i)<CR>
                         noremap glO :VimwikiChangeSymbolInListTo i)<CR>
 <
                         *vimwiki_glI* *vimwiki_gLI*
-glI                     Make a list item out of normal line or change the symbol
-                        of the current item to I), the numbering is adjusted
-                        according to the surrounding list items.
-gLI                     Change the symbol of the current list to I) II) III) ...
+glI                     Make a list item out of a normal line or change the
+                        symbol of the current item to I), the numbering is
+                        adjusted according to the surrounding list items.
+gLI                     Change the symbol of the current list to
+                        I) II) III) ...
                         To remap: >
                         noremap glo :VimwikiChangeSymbolTo I)<CR>
                         noremap glO :VimwikiChangeSymbolInListTo I)<CR>
+<
+                        *vimwiki_glx*
+glx                     Toggle checkbox of a list item disabled/off.
+                        Maps to |:VimwikiToggleRejectedListItem|.
+                        See |vimwiki-todo-lists|.
+                        To remap: >
+                        :map <Leader>tx <Plug>VimwikiToggleRejectedListItem
 <
                         *vimwiki_gqq*  *vimwiki_gww*
 gqq                     Format table. If you made some changes to a table
@@ -567,9 +604,15 @@ il                      A single list item.
 *:VimwikiTabMakeDiaryNote*
     Open diary wiki-file for today of the current wiki in a new tab.
 
+*:VimwikiMakeYesterdayDiaryNote*
+    Open diary wiki-file for yesterday of the current wiki.
+
 
 ------------------------------------------------------------------------------
 4.2. Local commands                                   *vimwiki-local-commands*
+
+These commands are only available (and meaningful) when you are currently in a
+Vimwiki file.
 
 *:VimwikiFollowLink*
     Follow wiki link (or create target wiki page if needed).
@@ -630,6 +673,10 @@ il                      A single list item.
 
 *:VimwikiToggleListItem*
     Toggle checkbox of a list item on/off.
+    See |vimwiki-todo-lists|.
+
+*:VimwikiToggleRejectedListItem*
+    Toggle checkbox of a list item disabled/off.
     See |vimwiki-todo-lists|.
 
 *:VimwikiListChangeLevel* CMD
@@ -728,8 +775,38 @@ il                      A single list item.
 
 *:VimwikiGenerateTags* tagname1 tagname2 ...
     Creates or updates an overview on all tags of the wiki with links to all
-    their instances.  Supports |cmdline-completion|.  If
-    no arguments (tags) are specified, outputs all tags.
+    their instances.  Supports |cmdline-completion|.  If no arguments (tags)
+    are specified, outputs all tags.  To make this command work properly, make
+    sure the tags have been built (see |vimwiki-build-tags|).
+
+------------------------------------------------------------------------------
+4.3. Functions                                              *vimwiki-functions*
+
+Functions to interact with Vimwiki. (It's intended that most commands will be
+replaced with corresponding function calls in the future.)
+Warning: this is currently unstable and likely to change.
+
+
+To map them to a key, use >
+ nnoremap <C-K> :call vimwiki#base#function_name(arg1, arg2)<CR>
+<
+
+                                                          *vimwiki-follow_link*
+vimwiki#base#follow_link({split}, {reuse}, {move_cursor})
+    Open the link under the cursor. {split} can have the following values:
+        'nosplit'       open the link in the current window
+        'vsplit'        open in a vertically split window
+        'hsplit'        open in a horizontally split window
+        'tab'           open in a new tab
+
+    If {reuse} is 1 and {split} one of 'vsplit' or 'hsplit', open the link in
+    a possibly existing split window instead of making a new split.
+
+    If {move_cursor} is 1 the cursor moves to the window or tab with the
+    opened link, otherwise, it stays in the window or tab with the link.
+
+    For example, <CR> is per default mapped to
+    vimwiki#base#follow_link('nosplit', 0, 1)
 
 
 ==============================================================================
@@ -805,8 +882,8 @@ identify wikilinks whose targets are not found.
 
 Interwiki:~
 
-If you maintain more than one wiki, you can create interwiki links between them
-by adding a numbered prefix "wikiX:" in front of a link: >
+If you maintain more than one wiki, you can create interwiki links between
+them by adding a numbered prefix "wikiX:" in front of a link: >
   [[wiki1:This is a link]]
 or: >
   [[wiki1:This is a link source|Description of the link]]
@@ -843,7 +920,7 @@ Raw URLs are also supported: >
 
 External files~
 
-The "file:" and "local:" schemes allow you to directly link to arbitray
+The "file:" and "local:" schemes allow you to directly link to arbitrary
 resources using absolute or relative paths: >
   [[file:/home/somebody/a/b/c/music.mp3]]
   [[file:C:/Users/somebody/d/e/f/music.mp3]]
@@ -885,7 +962,7 @@ in HTML: >
   alt="Vimwiki"/>
 
 Transclude image with alternate text and some style: >
-  {{http://.../vimwiki_logo.png|cool stuff|style="width:150px; height: 120px;"}}
+  {{http://.../vimwiki_logo.png|cool stuff|style="width:150px;height:120px;"}}
 in HTML: >
   <img src="http://vimwiki.googlecode.com/hg/images/vimwiki_logo.png"
   alt="cool stuff" style="width:150px; height:120px"/>
@@ -926,7 +1003,7 @@ Reference-style links: >
   a) [Link Name][Id]
   b) [Id][], using the "implicit link name" shortcut
 
-Reference style links must always include *two* consecutive pairs of
+Reference style links must always include two consecutive pairs of
 [-brackets, and field entries can not use "[" or "]".
 
 
@@ -1133,7 +1210,8 @@ This might be useful for coloring program code with external JS tools
 such as Google's syntax highlighter.
 
 You can setup Vimwiki to highlight code snippets in preformatted text.
-See |vimwiki-option-nested_syntaxes|
+See |vimwiki-option-nested_syntaxes| and
+|vimwiki-option-automatic_nested_syntaxes|.
 
 
 ------------------------------------------------------------------------------
@@ -1161,7 +1239,7 @@ E.g.:
  }}$
 
 Note: no matter how many lines are used in the text file, the HTML will
-compress it to *one* line only.
+compress it to one line only.
 
 Block environment is similar to block display, but is able to use specific
 LaTeX environments, such as 'align'. The syntax is the same as for block
@@ -1176,16 +1254,11 @@ Similar compression rules for the HTML page hold (as MathJax interprets the
 LaTeX code).
 
 Note: the highlighting in Vim is automatic. For the rendering in HTML, you
-have two *alternative* options:
+have two alternative options:
 
-1. using the MathJax server for rendering (needs internet connection).
-Add to your HTML template the following line:
-
-<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-
-2. installing MathJax locally (faster, no internet required). Choose a
-folder on your hard drive and save MathJax in it. Then add to your HTML
-template the following line:
+1. installing MathJax locally (Recommended: faster, no internet required).
+Choose a folder on your hard drive and save MathJax in it. Then add to your
+HTML template the following line:
 
 <script type="text/javascript" src="<mathjax_folder>/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 
@@ -1200,6 +1273,11 @@ template folder. For instance, a sensible folder structure could be:
 
 In this case, <mathjax_folder> would be "../mathjax" (without quotes).
 
+2. Loading MathJax from a CDN-server (needs internet connection).
+Add to your HTML template the following line:
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/config/TeX-AMS-MML_HTMLorMML.js"></script>
+
 
 ------------------------------------------------------------------------------
 5.9. Blockquotes                                  *vimwiki-syntax-blockquotes*
@@ -1212,7 +1290,7 @@ Text which starts with 4 or more spaces is a blockquote.
 
 
 ------------------------------------------------------------------------------
-5.10. Comments                                        *vimwiki-syntax-comments*
+5.10. Comments                                       *vimwiki-syntax-comments*
 
 A line that starts with %% is a comment.
 E.g.: >
@@ -1227,7 +1305,7 @@ E.g.: >
 <
 
 ------------------------------------------------------------------------------
-5.12. Tags                                                *vimwiki-syntax-tags*
+5.12. Tags                                               *vimwiki-syntax-tags*
 
 You can tag a wiki file, a header or an arbitrary place in a wiki file. Then,
 you can use Vim's built-in tag search functionality (see |tagsrch.txt|) or
@@ -1253,8 +1331,9 @@ which opens up a popup menu with all tags defined in the wiki starting with
 
 Tags are also treated as |vimwiki-anchors| (similar to bold text).
 
-Note that tag search/jump/completion commands need certain metadata saved in
-the wiki folder.  This metadata file can be manually updated by running
+                                                          *vimwiki-build-tags*
+Note that the tag search/jump/completion commands need certain metadata saved
+in the wiki folder.  This metadata file can be manually updated by running
 |:VimwikiRebuildTags|.  When the option |vimwiki-option-auto_tags| is enabled,
 the tags metadata will be auto-updated on each page save.
 
@@ -1270,40 +1349,50 @@ Tags-related commands and options:
 6. Folding/Outline                                           *vimwiki-folding*
 
 Vimwiki can fold or outline sections using headers and preformatted blocks.
-Alternatively, one can fold list subitems instead.
+Alternatively, one can fold list subitems instead. Folding is not enabled
+by default, and requires the |g:vimwiki_folding| variable to be set.
 
-Example for list folding:
+Example for list folding with |g:vimwiki_folding| set to 'list':
+
 = My current task =
-  * [ ] Do stuff 1
-    * [ ] Do substuff 1.1
-    * [ ] Do substuff 1.2
-      * [ ] Do substuff 1.2.1
-      * [ ] Do substuff 1.2.2
-    * [ ] Do substuff 1.3
-  * [ ] Do stuff 2
-  * [ ] Do stuff 3
+* [ ] Do stuff 1
+  * [ ] Do substuff 1.1
+  * [ ] Do substuff 1.2
+    * [ ] Do substuff 1.2.1
+    * [ ] Do substuff 1.2.2
+  * [ ] Do substuff 1.3
+* [ ] Do stuff 2
+* [ ] Do stuff 3
 
 Hit |zM| :
-= My current task = [8] --------------------------------------~
+= My current task =
+* [ ] Do stuff 1 [6] --------------------------------------~
+* [ ] Do stuff 2
+* [ ] Do stuff 3
 
 Hit |zr| :
-= My current task =~
-  * [ ] Do stuff 1 [5] --------------------------------------~
-  * [ ] Do stuff 2~
-  * [ ] Do stuff 3~
+= My current task =
+* [ ] Do stuff 1
+  * [ ] Do substuff 1.1
+  * [ ] Do substuff 1.2 [3] -------------------------------~
+  * [ ] Do substuff 1.3
+* [ ] Do stuff 2
+* [ ] Do stuff 3
 
-Hit |zr| one more time:
-= My current task =~
-  * [ ] Do stuff 1~
-    * [ ] Do substuff 1.1~
-    * [ ] Do substuff 1.2 [2] -------------------------------~
-    * [ ] Do substuff 1.3~
-  * [ ] Do stuff 2~
-  * [ ] Do stuff 3~
+Hit |zr| one more time :
+= My current task =
+* [ ] Do stuff 1
+  * [ ] Do substuff 1.1
+  * [ ] Do substuff 1.2
+    * [ ] Do substuff 1.2.1
+    * [ ] Do substuff 1.2.2
+  * [ ] Do substuff 1.3
+* [ ] Do stuff 2
+* [ ] Do stuff 3
 
 Note: If you use the default Vimwiki syntax, folding on list items will work
-properly only if all of them are indented using the current |shiftwidth|.
-For MediaWiki, * or # should be in the first column.
+properly only if all of them are indented using the current 'shiftwidth'.
+For MediaWiki syntax, * or # should be in the first column.
 
 To turn folding on/off check |g:vimwiki_folding|.
 
@@ -1342,6 +1431,18 @@ To apply a concrete HTML template to a wiki page, place:
 into it.
 
 See |vimwiki-option-template_path| for details.
+
+------------------------------------------------------------------------------
+%date                                                           *vimwiki-date*
+
+The date of the wiki page. The value can be used in the HTML template, see
+|vimwiki-option-template_path| for details.
+
+%date 2017-07-08
+%date
+
+If you omit the date after the placeholder, the date of the HTML conversion is
+used.
 
 
 ==============================================================================
@@ -1478,7 +1579,7 @@ See |vimwiki_glstar|, |vimwiki_gl#| |vimwiki_gl-|, |vimwiki_gl-|,
 |vimwiki_gl1|, |vimwiki_gla|, |vimwiki_glA|, |vimwiki_gli|, |vimwiki_glI|
 
 
-Use glr and gLr, if the numbers of a numbered list are mixed up. See
+Use glr and gLr if the numbers of a numbered list are mixed up. See
 |vimwiki_glr| and |vimwiki_gLr|.
 
 
@@ -1531,6 +1632,9 @@ child items (see also |g:vimwiki_listsyms|): >
     [O] -- 67-99%
     [X] -- 100%
 
+You can use |vimwiki_gln| and |vimwiki_glp| to change the "done" status of a
+checkbox without a childitem.
+
 It is possible to toggle several list items using visual mode. But note that
 instead of toggling every item individually, all items get checked if the
 first item is unchecked and all items get unchecked if the first item is
@@ -1539,6 +1643,10 @@ checked.
 Use gl<Space> (see |vimwiki_gl<Space>|) to remove a single checkbox and
 gL<Space> (see |vimwiki_gL<Space>|) to remove all checkboxes of the list the
 cursor is in.
+
+You can mark an item as rejected ("won't do") with
+|vimwiki_glx|. A rejected item will not influence the status of it's
+parents.
 
 
 ==============================================================================
@@ -1631,21 +1739,21 @@ For example, consider the following file "Todo.wiki": >
     - [ ] beg for *pay rise*
   == Knitting club ==
   === Knitting projects ===
-    - [ ] a funny *pig*
-    - [ ] a scary *dog*
+    - [ ] a *funny pig*
+    - [ ] a *scary dog*
 
 Then, to jump from your index.wiki directly to your knitting projects, use: >
   [[Todo#Knitting projects]]
 
 Or, to jump to an individual project, use this link: >
-  [[Todo#pig]]
+  [[Todo#funny pig]]
 
 Or, to jump to a tag, use this link: >
   [[Todo#todo-lists]]
 
 If there are multiple instances of an anchor, you can use the long form which
 consists of the complete header hierarchy, separated by '#': >
- [[Todo#My tasks#Knitting club#Knitting projects#dog]]
+ [[Todo#My tasks#Knitting club#Knitting projects#scary dog]]
 
 If you don't feel like typing the whole stuff, type just [[Todo# and then
 |i_CTRL-X_CTRL-O| to start the omni completion of anchors.
@@ -1705,7 +1813,7 @@ described in |vimwiki-temporary-wiki|.  For a list of per-wiki options, see
 
 
 ------------------------------------------------------------------------------
-12.1 Registered Wiki                    *g:vimwiki_list* *vimwiki-register-wiki*
+12.1 Registered Wiki                  *g:vimwiki_list* *vimwiki-register-wiki*
 
 One or more wikis can be registered using the |g:vimwiki_list| variable.
 
@@ -1746,7 +1854,7 @@ For clarity, in your .vimrc file you can define wiki options using separate
 
 
 ------------------------------------------------------------------------------
-12.2 Temporary Wiki                                    *vimwiki-temporary-wiki*
+12.2 Temporary Wiki                                   *vimwiki-temporary-wiki*
 
 
 The creation of temporary wikis allows you to create a wiki on the fly.
@@ -1894,11 +2002,13 @@ Each template could look like: >
         <div class="content">
         %content%
         </div>
+        <p><small>Page created on %date%</small></p>
     </body>
     </html>
 
 where
   %title% is replaced by a wiki page name or by a |vimwiki-title|
+  %date% is replaced with the current date or by |vimwiki-date|
   %root_path% is replaced by a count of ../ for pages buried in subdirs:
     if you have wikilink [[dir1/dir2/dir3/my page in a subdir]] then
     %root_path% is replaced by '../../../'.
@@ -2006,6 +2116,30 @@ or in: >
  }}}
 
 
+*vimwiki-option-automatic_nested_syntaxes*
+------------------------------------------------------------------------------
+Key                        Default value~
+automatic_nested_syntaxes  1
+
+Description~
+If set, the nested syntaxes (|vimwiki-option-nested_syntaxes|) are
+automatically derived when opening a buffer.
+Just write your preformatted text in your file like this >
+ {{{xxx
+ my preformatted text
+ }}}
+
+where xxx is a filetype which is known to Vim. For example, for C++
+highlighting, use "cpp" (not "c++"). For a list of known filetypes, type
+":setf " and hit Ctrl+d.
+
+Note that you may have to reload the file (|:edit|) to see the highlight.
+
+Since every file is scanned for the markers of preformatted text when it is
+opened, it can be slow when you have huge files. In this case, set this option
+to 0.
+
+
 *vimwiki-option-diary_rel_path*
 ------------------------------------------------------------------------------
 Key             Default value~
@@ -2067,8 +2201,12 @@ The following arguments, in this order, are passed to the script:
 10. root_path : a count of ../ for pages buried in subdirs
     For example, if you have wikilink [[dir1/dir2/dir3/my page in a subdir]]
     then this argument is '../../../'.
+11. custom_args : custom arguments that will be passed to the conversion
+    (can be defined in g:vimwiki_list as 'custom_wiki2html_args' parameter,
+    see |vimwiki-option-custom_wiki2html_args|)
+    script.
 
-Options 7-10 are experimental and may change in the future.  If any of these
+Options 7-11 are experimental and may change in the future.  If any of these
 parameters is empty, a hyphen "-" is passed to the script in its place.
 
 For an example and further instructions, refer to the following script:
@@ -2081,13 +2219,24 @@ be located at https://github.com/vimwiki-backup/vimwiki/issues/384
 To use the internal wiki2html converter, use an empty string (the default).
 
 
+vimwiki-option-custom_wiki2html_args
+-----------------------------------------------------------------------------
+Key                     Default value~
+custom_wiki2html_args   ''
+
+Description
+If a custom script is called with |vimwiki-option-custom_wiki2html|, additional
+parameters can be passed by setting them using 'custom_wiki2html_args' in
+|g:vimwiki_list|.
+
+
 *vimwiki-option-list_margin*
 ------------------------------------------------------------------------------
 Key               Default value~
 list_margin       -1
 
 Description~
-Width of left-hand margin for lists.  When negative, the current |shiftwidth|
+Width of left-hand margin for lists.  When negative, the current 'shiftwidth'
 is used.  This affects the appearance of the generated links (see
 |:VimwikiGenerateLinks|), the Table of contents (|vimwiki-toc|) and the
 behavior of the list manipulation commands |:VimwikiListChangeLevel| and the
@@ -2212,15 +2361,28 @@ Default: 'Vimwiki'
 ------------------------------------------------------------------------------
 *g:vimwiki_listsyms*
 
-String of 5 symbols to show the progression of todo list items.
+String of at least two symbols to show the progression of todo list items.
 Default value is ' .oOX'.
 
 The first char is for 0% done items.
-The fifth is for 100% done items.
+The last is for 100% done items.
 
 You can set it to some more fancy symbols like this:
 >
    let g:vimwiki_listsyms = '✗○◐●✓'
+
+
+------------------------------------------------------------------------------
+*g:vimwiki_listsym_rejected*
+
+Character that is used to show that an item of a todo list will not be done.
+Default value is '-'.
+
+The character used here may not be part of g:vimwiki_listsyms.
+
+You can set it to some more fancy symbols like this:
+>
+   let g:vimwiki_listsym_rejected = '✗'
 
 
 ------------------------------------------------------------------------------
@@ -2242,10 +2404,12 @@ Enable/disable Vimwiki's folding (outline) functionality. Folding in Vimwiki
 can uses either the 'expr' or the 'syntax' |foldmethod| of Vim.
 
 Value           Description~
-''              Disable folding.
-'expr'          Folding based on expression (folds sections and code blocks).
-'syntax'        Folding based on syntax (folds sections; slower than 'expr').
-'list'          Folding based on expression (folds list subitems; much slower).
+''              Disable folding
+'expr'          Folding based on expression (folds sections and code blocks)
+'syntax'        Folding based on syntax (folds sections; slower than 'expr')
+'list'          Folding based on expression (folds list subitems; much slower)
+'custom'        Leave the folding settings as they are (e.g. set by another
+                plugin)
 
 Default: ''
 
@@ -2264,6 +2428,19 @@ Convert newlines to <br />s in multiline list items.
 
 Value           Description~
 0               Newlines in a list item are converted to <br />s.
+1               Ignore newlines.
+
+Default: 1
+
+
+------------------------------------------------------------------------------
+*g:vimwiki_text_ignore_newline*
+
+This is HTML related.
+Convert newlines to <br />s in text.
+
+Value           Description~
+0               Newlines in text are converted to <br />s.
 1               Ignore newlines.
 
 Default: 1
@@ -2323,7 +2500,7 @@ A second example handles a new scheme, "vfile:", which behaves similar to
     endif
     let link_infos = vimwiki#base#resolve_link(link)
     if link_infos.filename == ''
-      echom 'Vimwiki Error: Unable to resolve link!'
+      echomsg 'Vimwiki Error: Unable to resolve link!'
       return 0
     else
       exe 'tabnew ' . fnameescape(link_infos.filename)
@@ -2418,7 +2595,7 @@ Default: 1
 ------------------------------------------------------------------------------
 *g:vimwiki_w32_dir_enc*
 
-Convert directory name from current |encoding| into 'g:vimwiki_w32_dir_enc'
+Convert directory name from current 'encoding' into 'g:vimwiki_w32_dir_enc'
 before it is created.
 
 If you have 'enc=utf-8' and set up >
@@ -2444,7 +2621,7 @@ Value           Description~
 
 Default: 0
 
-Note: Vim 7.3 has a new function |strdisplaywidth|, so for users of an up to
+Note: Vim 7.3 has a new function |strdisplaywidth()|, so for users of an up to
 date Vim, this option is obsolete.
 
 
@@ -2531,9 +2708,9 @@ Default: '' (empty)
 ------------------------------------------------------------------------------
 *g:vimwiki_valid_html_tags*
 
-Case-insensitive comma separated list of HTML tags that can be used in Vimwiki.
-When converting to HTML, these tags are left as they are, while every other
-tag is escaped.
+Case-insensitive comma separated list of HTML tags that can be used in
+Vimwiki.  When converting to HTML, these tags are left as they are, while
+every other tag is escaped.
 
 Default: 'b,i,s,u,sub,sup,kbd,br,hr'
 
@@ -2556,10 +2733,10 @@ they would not be deleted after |:VimwikiAll2HTML|.
 ------------------------------------------------------------------------------
 *g:vimwiki_conceallevel*
 
-In Vim 7.3 |conceallevel| is local to the current window, thus if you open a
+In Vim 7.3 'conceallevel' is local to the current window, thus if you open a
 Vimwiki buffer in a new tab or window, it would be set to the default value.
 
-Vimwiki sets |conceallevel| to g:vimwiki_conceallevel every time a Vimwiki
+Vimwiki sets 'conceallevel' to g:vimwiki_conceallevel every time a Vimwiki
 buffer is entered.
 
 With default settings, Vimwiki conceals one-character markers, shortens long
@@ -2571,7 +2748,7 @@ Default: 2
 ------------------------------------------------------------------------------
 *g:vimwiki_autowriteall*
 
-In Vim |autowriteall| is a global setting. With g:vimwiki_autowriteall Vimwiki
+In Vim 'autowriteall' is a global setting. With g:vimwiki_autowriteall Vimwiki
 makes it local to its buffers.
 
 Value           Description~
@@ -2604,19 +2781,6 @@ Note:
 
 
 Default: 15
-
-
-------------------------------------------------------------------------------
-*g:vimwiki_debug*
-
-Controls verbosity of debugging output, for example, the diagnostic
-information about HTML conversion.
-
-Value           Description~
-0               Do not show debug messages.
-1               Show debug messages.
-
-Default: 0
 
 
 ------------------------------------------------------------------------------
@@ -2708,23 +2872,41 @@ Old homepage: http://code.google.com/p/vimwiki/
 
 Contributors and their Github usernames in roughly chronological order:
 
-    - Maxim Kim (habamax) <habamax@gmail.com> as original author
+    - Maxim Kim (@habamax) <habamax@gmail.com> as original author
     - the people here: http://code.google.com/p/vimwiki/people/list
-    - Stuart Andrews (tub78)
+    - Stuart Andrews (@tub78)
     - Tomas Pospichal
-    - Daniel Schemala (EinfachToll) as current maintainer
-    - Larry Hynes (larryhynes)
-    - Hector Arciga (harciga)
-    - Alexey Radkov (lyokha)
-    - Aaron Franks (af)
-    - Dan Bernier (danbernier)
-    - Carl Helmertz (chelmertz)
-    - Karl Yngve Lervåg (lervag)
-    - Patrick Davey (patrickdavey)
-    - Ivan Tishchenko (t7ko)
-    - 修昊 (Svtter)
-    - Marcelo D Montu (mMontu)
+    - Daniel Schemala (@EinfachToll) as current maintainer
+    - Larry Hynes (@larryhynes)
+    - Hector Arciga (@harciga)
+    - Alexey Radkov (@lyokha)
+    - Aaron Franks (@af)
+    - Dan Bernier (@danbernier)
+    - Carl Helmertz (@chelmertz)
+    - Karl Yngve Lervåg (@lervag)
+    - Patrick Davey (@patrickdavey)
+    - Ivan Tishchenko (@t7ko)
+    - 修昊 (@Svtter)
+    - Marcelo D Montu (@mMontu)
     - John Kaul
+    - Hongbo Liu (@hiberabyss)
+    - @Tomsod
+    - @wangzq
+    - Jinzhou Zhang (@lotabout)
+    - Michael Riley (@optik-aper)
+    - Irfan Sharif (@irfansharif)
+    - John Conroy (@jconroy77)
+    - Christian Rondeau (@christianrondeau)
+    - Alex Thorne (@thornecc)
+    - Shafqat Bhuiyan (@priomsrb)
+    - Bradley Cicenas (@bcicen)
+    - Michael Thessel (@MichaelThessel)
+    - Michael F. Schönitzer (@nudin)
+    - @sqlwwx
+    - Guilherme Salazar (@salazar)
+    - Daniel Trnka (@trnila)
+    - Yuchen Pei (@ycpei)
+    - @maqiv
 
 
 ==============================================================================
@@ -2735,7 +2917,47 @@ t7ko.private (fixes not wanted in main repo)
     * |:VG| and |:VGN| shortcuts to |:VimwikiGoto| which don't need escaping 
       spaces in link.
 
-2.2~
+
+Issue numbers starting with '#' are issues from
+https://github.com/vimwiki/vimwiki/issues/, all others from
+http://code.google.com/p/vimwiki/issues/list. They may be accessible from
+https://github.com/vimwiki-backup/vimwiki/issues.
+
+
+2.3 (2016-03-31)~
+
+New:
+    * Add |:VimwikiMakeYesterdayDiaryNote| command
+    * Issue #128: add option |vimwiki-option-automatic_nested_syntaxes|
+    * Issue #192: Sort links in the list generated by |:VimwikiGenerateTags|
+
+Fixed:
+    * Issue #176: Fix issue when the wiki path contains spaces
+    * Also look for tags in wiki files in subdirectories
+    * Locate the .tags file correctly on Windows
+    * Issue #183: Fix HTML conversion of headers containing links
+    * Issue #64: create correct Markdown links when pressing CR on a word
+    * Issue #191: ignore headers inside preformatted text when creating the TOC
+    * Create the standard CSS file also if only one file is converted to HTML
+    * Fix #188: |vimwiki_+| on a raw url surrounds it with brackets
+    * various minor fixes
+
+
+2.2.1 (2015-12-10)~
+
+Removed:~
+    * Removed the option g:vimwiki_debug, which probably nobody used. If you
+      want it back, file an issue at Github.
+
+Fixed:~
+    * Issue #175: Don't do random things when the user has remapped the z key
+    * Don't ask for confirmation when following an URL in MacOS
+    * Always jump to the first occurrence of a tag in a file
+    * Don't move the cursor when updating the TOC
+    * Fix some issues with the TOC when folding is enabled
+
+
+2.2 (2015-11-25)~
 
 New:~
     * Support for anchors, see |vimwiki-anchors|
@@ -2749,7 +2971,7 @@ New:~
         * more key maps for list manipulation, see |vimwiki-list-manipulation|
         * improved automatic adjustment of checkboxes
         * text objects for list items, see |vimwiki-text-objects|
-    * New command |VimwikiCheckLinks| to check for broken links
+    * New command |:VimwikiCheckLinks| to check for broken links
     * New global option |g:vimwiki_auto_chdir|
     * New global option |g:vimwiki_map_prefix|
     * Support for wiki links absolute to the wiki root
@@ -2757,10 +2979,12 @@ New:~
     * Issue #24: Basic support for remote directories via netrw
     * Issue #50: in HTML, tables can now be embedded in lists
     * When converting to HTML, show a message with the output directory
-    * Add auto completion for |VimwikiGoto|
+    * Add auto completion for |:VimwikiGoto|
     * Add Chinese Readme file
 
 Changed:~
+    * Wiki files must not contain # anymore, because # is used to separate the
+      file from an anchor in a link.
     * replace the function vimwiki#base#resolve_scheme() by
       vimwiki#base#resolve_link() (relevant if you have a custom
       |VimwikiLinkHandler| which used this function)
@@ -2801,11 +3025,6 @@ Fixed:~
     * Various small fixes
     * Corrected website links in documentation. code.google is dead, long live
       Github!
-
-Issue numbers starting with '#' are issues from
-https://github.com/vimwiki/vimwiki/issues/, all others from
-http://code.google.com/p/vimwiki/issues/list. They may be accessible from
-https://github.com/vimwiki-backup/vimwiki/issues.
 
 2.1~
 
@@ -2940,10 +3159,11 @@ http://code.google.com/p/vimwiki/issues/list
 ==============================================================================
 16. License                                                  *vimwiki-license*
 
-The MIT Licence
+The MIT License
 http://www.opensource.org/licenses/mit-license.php
 
 Copyright (c) 2008-2010 Maxim Kim
+              2013-2017 Daniel Schemala
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

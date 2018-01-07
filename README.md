@@ -11,7 +11,7 @@ search for `t7ko/dev` section (near the end, under `Changelog`).
 *END NOTE*
 
 ![screenshot1](doc/screenshot_1.png)
-![screenshot2](doc/screenshot_2.png)
+![screenshot2](doc/screenshot_2.png) *
 
 Intro
 ------------------------------------------------------------------------------
@@ -131,6 +131,11 @@ Make sure you have these settings in your vimrc file:
 Without them Vimwiki will not work properly.
 
 
+Installation using [Vim packages](http://vimhelp.appspot.com/repeat.txt.html#packages) (since Vim 7.4.1528)
+------------------------------------------------------------------------------
+
+    git clone https://github.com/vimwiki/vimwiki.git ~/.vim/pack/plugins/start/vimwiki
+
 Installation using [Pathogen](http://www.vim.org/scripts/script.php?script_id=2332)
 ------------------------------------------------------------------------------
 
@@ -139,6 +144,17 @@ Installation using [Pathogen](http://www.vim.org/scripts/script.php?script_id=23
     cd bundle
     git clone https://github.com/vimwiki/vimwiki.git
 
+Installation using [Vundle](https://github.com/VundleVim/Vundle.vim)
+------------------------------------------------------------------------------
+
+Add `Plugin 'vimwiki/vimwiki'` to your vimrc file and run
+
+    vim +PluginInstall +qall
+
 Or download the [zip archive](https://github.com/vimwiki/vimwiki/archive/master.zip) and extract it in `~/.vim/bundle/`
 
 Then launch Vim, run `:Helptags` and then `:help vimwiki` to verify it was installed.
+
+----
+\* Screenshots made with the [solarized colorscheme](https://github.com/altercation/vim-colors-solarized)
+and [lightline](https://github.com/itchyny/lightline.vim)

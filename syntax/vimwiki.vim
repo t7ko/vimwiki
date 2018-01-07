@@ -10,14 +10,12 @@ elseif exists("b:current_syntax")
 endif
 
 "TODO do nothing if ...? (?)
-let g:starttime = reltime()  " start the clock
 if VimwikiGet('maxhi')
   let b:existing_wikifiles =
         \ vimwiki#base#get_wikilinks(g:vimwiki_current_idx, 1)
   let b:existing_wikidirs  =
         \ vimwiki#base#get_wiki_directories(g:vimwiki_current_idx)
 endif
-let s:timescans = vimwiki#u#time(g:starttime)  "XXX
   "let b:xxx = 1
   "TODO ? update wikilink syntax group here if really needed (?) for :e and such
   "if VimwikiGet('maxhi')
@@ -46,8 +44,6 @@ let g:vimwiki_rxWeblinkUrl = g:vimwiki_rxWebProtocols .
 " }}}
 
 call vimwiki#u#reload_regexes()
-
-let s:time0 = vimwiki#u#time(g:starttime)  "XXX
 
 " LINKS: setup of larger regexes {{{
 
@@ -177,9 +173,6 @@ let g:vimwiki_rxAnyLink = g:vimwiki_rxWikiLink.'\|'.
 
 " LINKS: highlighting is complicated due to "nonexistent" links feature {{{
 function! s:add_target_syntax_ON(target, type) " {{{
-  if g:vimwiki_debug > 1
-    echom '[vimwiki_debug] syntax target > '.a:target
-  endif
   let prefix0 = 'syntax match '.a:type.' `'
   let suffix0 = '` display contains=@NoSpell,VimwikiLinkRest,'.a:type.'Char'
   let prefix1 = 'syntax match '.a:type.'T `'
@@ -189,9 +182,6 @@ function! s:add_target_syntax_ON(target, type) " {{{
 endfunction "}}}
 
 function! s:add_target_syntax_OFF(target) " {{{
-  if g:vimwiki_debug > 1
-    echom '[vimwiki_debug] syntax target > '.a:target
-  endif
   let prefix0 = 'syntax match VimwikiNoExistsLink `'
   let suffix0 = '` display contains=@NoSpell,VimwikiLinkRest,VimwikiLinkChar'
   let prefix1 = 'syntax match VimwikiNoExistsLinkT `'
@@ -252,16 +242,12 @@ if VimwikiGet('maxhi')
   call s:add_target_syntax_OFF(g:vimwiki_rxWikiIncl)
 
   " Subsequently, links verified on vimwiki's path are highlighted as existing
-  let s:time01 = vimwiki#u#time(g:starttime)  "XXX
   call s:highlight_existing_links()
-  let s:time02 = vimwiki#u#time(g:starttime)  "XXX
 else
-  let s:time01 = vimwiki#u#time(g:starttime)  "XXX
   " Wikilink
   call s:add_target_syntax_ON(g:vimwiki_rxWikiLink, 'VimwikiLink')
   " WikiIncl
   call s:add_target_syntax_ON(g:vimwiki_rxWikiIncl, 'VimwikiLink')
-  let s:time02 = vimwiki#u#time(g:starttime)  "XXX
 endif
 
 " Weblink
@@ -329,6 +315,12 @@ endfor
 
 " }}}
 
+let g:vimwiki_rxPreStart = '^\s*'.g:vimwiki_rxPreStart
+let g:vimwiki_rxPreEnd = '^\s*'.g:vimwiki_rxPreEnd.'\s*$'
+
+let g:vimwiki_rxMathStart = '^\s*'.g:vimwiki_rxMathStart
+let g:vimwiki_rxMathEnd = '^\s*'.g:vimwiki_rxMathEnd.'\s*$'
+
 " possibly concealed chars " {{{
 let s:conceal = exists("+conceallevel") ? ' conceal' : ''
 
@@ -344,14 +336,6 @@ execute 'syn match VimwikiSubScript contained /'.g:vimwiki_char_subscript.'/'.s:
 " }}}
 
 " concealed link parts " {{{
-if g:vimwiki_debug > 1
-  echom 'WikiLink Prefix: '.s:rx_wikilink_prefix
-  echom 'WikiLink Suffix: '.s:rx_wikilink_suffix
-  echom 'WikiLink Prefix1: '.s:rx_wikilink_prefix1
-  echom 'WikiLink Suffix1: '.s:rx_wikilink_suffix1
-  echom 'WikiIncl Prefix: '.g:vimwiki_rxWikiInclPrefix1
-  echom 'WikiIncl Suffix: '.g:vimwiki_rxWikiInclSuffix1
-endif
 
 " define the conceal attribute for links only if Vim is new enough to handle it
 " and the user has g:vimwiki_url_maxsave > 0
@@ -429,7 +413,7 @@ execute 'syntax match VimwikiList /'.g:vimwiki_rxListDefine.'/'
 execute 'syntax match VimwikiListTodo /'.g:vimwiki_rxListItem.'/'
 
 if g:vimwiki_hl_cb_checked == 1
-  execute 'syntax match VimwikiCheckBoxDone /'.g:vimwiki_rxListItemWithoutCB.'\s*\['.g:vimwiki_listsyms_list[4].'\]\s.*$/ '.
+  execute 'syntax match VimwikiCheckBoxDone /'.g:vimwiki_rxListItemWithoutCB.'\s*\['.g:vimwiki_listsyms_list[-1].'\]\s.*$/ '.
         \ 'contains=VimwikiNoExistsLink,VimwikiLink,@Spell'
 elseif g:vimwiki_hl_cb_checked == 2
   execute 'syntax match VimwikiCheckBoxDone /'.g:vimwiki_rxListItemAndChildren.'/ contains=VimwikiNoExistsLink,VimwikiLink,@Spell'
@@ -466,18 +450,19 @@ execute 'syntax match VimwikiCodeT /'.g:vimwiki_rxCode.'/ contained contains=Vim
 " <hr> horizontal rule
 execute 'syntax match VimwikiHR /'.g:vimwiki_rxHR.'/'
 
-execute 'syntax region VimwikiPre start=/^\s*'.g:vimwiki_rxPreStart.
-      \ '/ end=/^\s*'.g:vimwiki_rxPreEnd.'\s*$/ contains=@Spell'
+execute 'syntax region VimwikiPre start=/'.g:vimwiki_rxPreStart.
+      \ '/ end=/'.g:vimwiki_rxPreEnd.'/ contains=@Spell'
 
-execute 'syntax region VimwikiMath start=/^\s*'.g:vimwiki_rxMathStart.
-      \ '/ end=/^\s*'.g:vimwiki_rxMathEnd.'\s*$/ contains=@Spell'
+execute 'syntax region VimwikiMath start=/'.g:vimwiki_rxMathStart.
+      \ '/ end=/'.g:vimwiki_rxMathEnd.'/ contains=@Spell'
 
 
 " placeholders
 syntax match VimwikiPlaceholder /^\s*%nohtml\s*$/
-syntax match VimwikiPlaceholder /^\s*%title\%(\s.*\)\?$/ contains=VimwikiPlaceholderParam
-syntax match VimwikiPlaceholder /^\s*%template\%(\s.*\)\?$/ contains=VimwikiPlaceholderParam
-syntax match VimwikiPlaceholderParam /\s.*/ contained
+syntax match VimwikiPlaceholder /^\s*%title\ze\%(\s.*\)\?$/ nextgroup=VimwikiPlaceholderParam skipwhite
+syntax match VimwikiPlaceholder /^\s*%date\ze\%(\s.*\)\?$/ nextgroup=VimwikiPlaceholderParam skipwhite
+syntax match VimwikiPlaceholder /^\s*%template\ze\%(\s.*\)\?$/ nextgroup=VimwikiPlaceholderParam skipwhite
+syntax match VimwikiPlaceholderParam /.*/ contained
 
 " html tags
 if g:vimwiki_valid_html_tags != ''
@@ -610,23 +595,23 @@ let b:current_syntax="vimwiki"
 
 " EMBEDDED syntax setup "{{{
 let s:nested = VimwikiGet('nested_syntaxes')
+if VimwikiGet('automatic_nested_syntaxes')
+  let s:nested = extend(s:nested, vimwiki#base#detect_nested_syntax(), "keep")
+endif
 if !empty(s:nested)
   for [s:hl_syntax, s:vim_syntax] in items(s:nested)
     call vimwiki#base#nested_syntax(s:vim_syntax,
-          \ '^\s*'.g:vimwiki_rxPreStart.'\%(.*[[:blank:][:punct:]]\)\?'.
+          \ g:vimwiki_rxPreStart.'\%(.*[[:blank:][:punct:]]\)\?'.
           \ s:hl_syntax.'\%([[:blank:][:punct:]].*\)\?',
-          \ '^\s*'.g:vimwiki_rxPreEnd, 'VimwikiPre')
+          \ g:vimwiki_rxPreEnd, 'VimwikiPre')
   endfor
 endif
 " LaTeX
 call vimwiki#base#nested_syntax('tex', 
-      \ '^\s*'.g:vimwiki_rxMathStart.'\%(.*[[:blank:][:punct:]]\)\?'.
+      \ g:vimwiki_rxMathStart.'\%(.*[[:blank:][:punct:]]\)\?'.
       \ '\%([[:blank:][:punct:]].*\)\?',
-      \ '^\s*'.g:vimwiki_rxMathEnd, 'VimwikiMath')
+      \ g:vimwiki_rxMathEnd, 'VimwikiMath')
 "}}}
 
 
 syntax spell toplevel
-
-let s:timeend = vimwiki#u#time(g:starttime)  "XXX
-call VimwikiLog_extend('timing',['syntax:scans',s:timescans],['syntax:regexloaded',s:time0],['syntax:beforeHLexisting',s:time01],['syntax:afterHLexisting',s:time02],['syntax:end',s:timeend])
